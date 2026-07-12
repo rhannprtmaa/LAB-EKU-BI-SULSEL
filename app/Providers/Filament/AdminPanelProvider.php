@@ -2,7 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Pages\Auth\CustomLogin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -27,8 +26,8 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('admin')
-            ->path('') // KOSONGKAN agar URL utama (http://127.0.0.1:8000) langsung ke login
-            ->login(CustomLogin::class)
+            ->path('')
+            ->login()
             ->brandName('LAB EKU SULSEL')
             ->brandLogo(fn () => view('filament.admin.logo'))
             ->colors([
