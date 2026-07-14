@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Resources\EkuTransactionResource; // <-- [BARU] Import Resource EKU
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -35,6 +36,9 @@ class AdminPanelProvider extends PanelProvider
                 'gray' => Color::Hex('#F5F5F5'),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
+            ->resources([
+                EkuTransactionResource::class, // <-- [BARU] Mendaftarkan Menu EKU ke Sidebar
+            ])
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
                 Dashboard::class,

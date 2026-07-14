@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth; // <-- Tambahkan import Auth Facade
 
 class UserResource extends Resource
 {
@@ -26,10 +27,12 @@ class UserResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    // PEMBATASAN AKSES: Hanya Admin BI yang bisa melihat menu ini
     public static function canViewAny(): bool
     {
-        return auth()->user()?->isAdminBi() ?? false;
+        /** @var User|null $user */ // <-- Disederhanakan karena Use App\Models\User sudah ada di atas
+        $user = Auth::user(); // <-- Menggunakan Facade Auth agar Intelephense terbaca
+
+        return $user?->isAdminBi() ?? false;
     }
 
     public static function form(Schema $schema): Schema
