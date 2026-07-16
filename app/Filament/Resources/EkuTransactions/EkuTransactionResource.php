@@ -1,28 +1,31 @@
 <?php
 
-namespace App\Filament\Resources;
+namespace App\Filament\Resources\EkuTransactions;
 
-use App\Filament\Resources\EkuTransactionResource\Pages\CreateEkuTransaction;
-use App\Filament\Resources\EkuTransactionResource\Pages\EditEkuTransaction;
-use App\Filament\Resources\EkuTransactionResource\Pages\ListEkuTransactions;
-use App\Filament\Resources\EkuTransactionResource\Schemas\EkuTransactionForm;
-use App\Filament\Resources\EkuTransactionResource\Tables\EkuTransactionsTable;
+use App\Filament\Resources\EkuTransactions\Pages\ListEkuTransactions;
+use App\Filament\Resources\EkuTransactions\RelationManagers\DetailsRelationManager;
+use App\Filament\Resources\EkuTransactions\Schemas\EkuTransactionForm;
+use App\Filament\Resources\EkuTransactions\Tables\EkuTransactionsTable;
 use App\Models\EkuTransaction;
-use BackedEnum;
-use UnitEnum;
+use BackedEnum; // <-- IMPORT INI WAJIB ADA
+use UnitEnum;   // <-- IMPORT INI WAJIB ADA
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
 class EkuTransactionResource extends Resource
 {
     protected static ?string $model = EkuTransaction::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowsRightLeft;
+    // --- FIX TIPE DATA WAJIB FILAMENT TERBARU ---
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-arrows-right-left';
+
     protected static string|UnitEnum|null $navigationGroup = 'Transaksi';
+
     protected static ?string $navigationLabel = 'Pengajuan EKU';
     protected static ?string $pluralModelLabel = 'Daftar Pengajuan EKU';
+
+    protected static ?int $navigationSort = 1;
 
     public static function canViewAny(): bool
     {
@@ -41,15 +44,15 @@ class EkuTransactionResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            DetailsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array
     {
         return [
             'index' => ListEkuTransactions::route('/'),
-            'create' => CreateEkuTransaction::route('/create'),
-            'edit' => EditEkuTransaction::route('/{record}/edit'),
         ];
     }
 }

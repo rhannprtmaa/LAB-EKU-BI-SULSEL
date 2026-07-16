@@ -2,7 +2,7 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Resources\EkuTransactionResource; // <-- [BARU] Import Resource EKU
+use App\Filament\Resources\EkuTransactions\EkuTransactionResource;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -29,25 +29,42 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('')
             ->login()
+
+            // --- Tampilan Panel ---
             ->brandName('LAB EKU SULSEL')
             ->brandLogo(fn () => view('filament.admin.logo'))
             ->colors([
                 'primary' => Color::Hex('#054177'),
-                'gray' => Color::Hex('#F5F5F5'),
+                'gray'    => Color::Hex('#F5F5F5'),
             ])
+
+            // --- Urutan Sidebar Menu ---
+            ->navigationGroups([
+                'Transaksi',
+                'Master Data',
+                'User Management',
+            ])
+
+            // --- Registrasi Resources ---
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->resources([
-                EkuTransactionResource::class, // <-- [BARU] Mendaftarkan Menu EKU ke Sidebar
+                EkuTransactionResource::class,
             ])
+
+            // --- Registrasi Pages ---
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
                 Dashboard::class,
             ])
+
+            // --- Registrasi Widgets ---
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 AccountWidget::class,
                 FilamentInfoWidget::class,
             ])
+
+            // --- Middleware Configuration ---
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

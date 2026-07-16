@@ -1,9 +1,11 @@
 <?php
 
-namespace App\Filament\Resources\EkuTransactionResource\Tables;
+namespace App\Filament\Resources\EkuTransactions\Tables;
 
+// <-- FIX: Mengikuti struktur Filament 5 milikmu
 use Filament\Actions\DeleteAction;
-use Filament\Actions\EditAction;  
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -48,6 +50,7 @@ class EkuTransactionsTable
             ])
             ->defaultSort('created_at', 'desc')
             ->actions([
+                ViewAction::make(), // <-- Tombol untuk memunculkan tabel rincian 12 bulan
                 EditAction::make(),
                 DeleteAction::make(),
             ]);

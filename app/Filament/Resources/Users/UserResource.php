@@ -2,8 +2,6 @@
 
 namespace App\Filament\Resources\Users;
 
-use App\Filament\Resources\Users\Pages\CreateUser;
-use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\Schemas\UserForm;
 use App\Filament\Resources\Users\Tables\UsersTable;
@@ -14,7 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth; // <-- Tambahkan import Auth Facade
+use Illuminate\Support\Facades\Auth;
 
 class UserResource extends Resource
 {
@@ -25,12 +23,15 @@ class UserResource extends Resource
     protected static ?string $navigationLabel = 'Daftar Pengguna';
     protected static ?string $pluralModelLabel = 'Daftar Pengguna';
 
+    // FIX SIDEBAR: Urutan ketiga di menu
+    protected static ?int $navigationSort = 3;
+
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function canViewAny(): bool
     {
-        /** @var User|null $user */ // <-- Disederhanakan karena Use App\Models\User sudah ada di atas
-        $user = Auth::user(); // <-- Menggunakan Facade Auth agar Intelephense terbaca
+        /** @var User|null $user */
+        $user = Auth::user();
 
         return $user?->isAdminBi() ?? false;
     }
@@ -53,9 +54,8 @@ class UserResource extends Resource
     public static function getPages(): array
     {
         return [
+            // FIX MODAL: Rute create & edit dihapus agar otomatis menjadi Pop-up
             'index' => ListUsers::route('/'),
-            'create' => CreateUser::route('/create'),
-            'edit' => EditUser::route('/{record}/edit'),
         ];
     }
 }
