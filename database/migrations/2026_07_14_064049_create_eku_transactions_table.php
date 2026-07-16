@@ -10,18 +10,14 @@ return new class extends Migration
     {
         Schema::create('eku_transactions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('bank_id')->constrained('banks')->cascadeOnDelete();
+            $table->foreignId('bank_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
 
-            // Kolom baru yang kurang
-            $table->string('periode');
-            $table->string('batasan_periode')->nullable();
-
+            // File Excel yang diunggah (bisa salah satu atau keduanya)
             $table->string('file_setoran')->nullable();
             $table->string('file_penarikan')->nullable();
-            $table->string('file_lampiran')->nullable(); // Kolom baru file lampiran
 
-            // Pecahan Uang Kertas (Grand Total)
+            // --- RINCIAN UANG KERTAS ---
             $table->decimal('kertas_100k', 20, 2)->default(0);
             $table->decimal('kertas_50k', 20, 2)->default(0);
             $table->decimal('kertas_20k', 20, 2)->default(0);
@@ -30,18 +26,20 @@ return new class extends Migration
             $table->decimal('kertas_2k', 20, 2)->default(0);
             $table->decimal('kertas_1k', 20, 2)->default(0);
 
-            // Pecahan Uang Logam (Grand Total)
+            // --- RINCIAN UANG LOGAM ---
             $table->decimal('logam_1k', 20, 2)->default(0);
             $table->decimal('logam_500', 20, 2)->default(0);
             $table->decimal('logam_200', 20, 2)->default(0);
             $table->decimal('logam_100', 20, 2)->default(0);
 
+            // TOTAL KESELURUHAN & STATUS
             $table->decimal('total_nominal', 20, 2)->default(0);
-            $table->string('status')->default('Menunggu');
+            $table->enum('status', ['Menunggu', 'Disetujui', 'Ditolak'])->default('Menunggu');
             $table->text('catatan')->nullable();
 
             $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('approved_at')->nullable();
+
             $table->timestamps();
         });
     }

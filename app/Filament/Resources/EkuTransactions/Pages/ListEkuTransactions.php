@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\Resources\EkuTransactions\Pages; // <-- FIX: Menggunakan nama folder yang benar (EkuTransactions)
+namespace App\Filament\Resources\EkuTransactions\Pages;
 
-use App\Filament\Resources\EkuTransactions\EkuTransactionResource; // <-- FIX: Import Resource yang benar
+use App\Filament\Resources\EkuTransactions\EkuTransactionResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
@@ -13,8 +13,7 @@ class ListEkuTransactions extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            // Cukup gunakan ini, karena rute Create sudah dihapus,
-            // Filament otomatis menyulap tombol ini jadi Pop-up Modal!
+            // Otomatis tersembunyi untuk role selain User Perbankan (lihat EkuTransactionResource::canCreate()).
             CreateAction::make(),
         ];
     }

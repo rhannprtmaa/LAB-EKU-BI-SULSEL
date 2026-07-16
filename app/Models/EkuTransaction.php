@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -13,11 +14,28 @@ class EkuTransaction extends Model
 {
     protected $guarded = [];
 
+    // --- Status pengajuan (dipakai di Resource, Table, dan Form) ---
+    public const STATUS_MENUNGGU = 'Menunggu';
+    public const STATUS_DISETUJUI = 'Disetujui';
+    public const STATUS_REVISI = 'Perlu Revisi';
+    public const STATUS_DITOLAK = 'Ditolak';
+
+    public static function statusOptions(): array
+    {
+        return [
+            self::STATUS_MENUNGGU => 'Menunggu Review',
+            self::STATUS_DISETUJUI => 'Disetujui',
+            self::STATUS_REVISI => 'Perlu Revisi',
+            self::STATUS_DITOLAK => 'Ditolak',
+        ];
+    }
+
     protected function casts(): array
     {
         return [
             'total_nominal' => 'decimal:2',
             'approved_at' => 'datetime',
+            'is_edited_by_bi' => 'boolean',
         ];
     }
 
@@ -26,6 +44,29 @@ class EkuTransaction extends Model
     // =========================================================================
     protected static function booted()
     {
+        // Saat pertama kali dibuat oleh User Perbankan, simpan salinan file ASLI
+        // supaya nanti bisa dibandingkan dengan versi yang direvisi User BI.
+        static::creating(function ($transaction) {
+            $transaction->file_setoran_original ??= $transaction->file_setoran;
+            $transaction->file_penarikan_original ??= $transaction->file_penarikan;
+            $transaction->file_lampiran_original ??= $transaction->file_lampiran;
+            $transaction->status ??= self::STATUS_MENUNGGU;
+        });
+
+        // Saat diupdate (misalnya oleh User BI yang mengoreksi file), tandai is_edited_by_bi
+        // jika file yang sekarang berbeda dari file asli bank.
+        static::updating(function ($transaction) {
+            $fileBerubah = $transaction->isDirty(['file_setoran', 'file_penarikan'])
+                && (
+                    $transaction->file_setoran !== $transaction->file_setoran_original
+                    || $transaction->file_penarikan !== $transaction->file_penarikan_original
+                );
+
+            if ($fileBerubah) {
+                $transaction->is_edited_by_bi = true;
+            }
+        });
+
         // static::saved digunakan agar Detail dieksekusi SETELAH transaksi utama punya ID
         static::saved(function ($transaction) {
 
@@ -66,11 +107,6 @@ class EkuTransaction extends Model
 
                     // Jika baris ini terdeteksi sebagai baris Bulan (Misal: baris Januari), sedot datanya!
                     if ($namaBulan) {
-                        /* * PEMETAAN KOLOM (Berdasarkan gambar Excel BI):
-                         * Index 2 (Kolom C) = 100rb | Index 3 = 50rb | Index 4 = 20rb | dst...
-                         * Index 9 (Kolom J) = TOTAL UK (Kita lewati)
-                         * Index 10 (Kolom K) = 1rb Logam | Index 11 = 500 Logam | dst...
-                         */
                         $k100k = $clean($row[2] ?? 0) * $multiplier;
                         $k50k  = $clean($row[3] ?? 0) * $multiplier;
                         $k20k  = $clean($row[4] ?? 0) * $multiplier;
@@ -104,7 +140,6 @@ class EkuTransaction extends Model
             $processExcel($transaction->file_penarikan, 'Penarikan');
 
             // 4. PENGHITUNGAN GRAND TOTAL UNTUK DASHBOARD
-            // Menggabungkan total seluruh bulan untuk ditampilkan di tabel pengajuan utama
             $totals = $transaction->details()
                 ->selectRaw('
                     SUM(kertas_100k) as total_100k, SUM(kertas_50k) as total_50k,
@@ -135,4 +170,21 @@ class EkuTransaction extends Model
 
     // Relasi ke Tabel Detail Bulanan
     public function details(): HasMany { return $this->hasMany(EkuTransactionDetail::class); }
+
+    // --- Scope: batasi query sesuai bank tertentu (dipakai untuk User Perbankan) ---
+    public function scopeForBank(Builder $query, ?int $bankId): Builder
+    {
+        return $bankId ? $query->where('bank_id', $bankId) : $query;
+    }
+    // Bisa diedit oleh User Perbankan pemilik? (hanya saat status masih terbuka utk revisi)
+    public function isEditableByBankOwner(): bool
+    {
+        return in_array($this->status, [self::STATUS_MENUNGGU, self::STATUS_REVISI], true);
+    }
+
+    // Sudah final (tidak bisa diubah lagi oleh siapapun kecuali dibuka ulang)
+    public function isLocked(): bool
+    {
+        return $this->status === self::STATUS_DISETUJUI;
+    }
 }
