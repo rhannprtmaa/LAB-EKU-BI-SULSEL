@@ -20,7 +20,7 @@ class BankResource extends Resource
     protected static ?string $model = Bank::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingLibrary;
-    protected static string|UnitEnum|null $navigationGroup = 'Master Data';
+    protected static string|UnitEnum|null $navigationGroup = null;
     protected static ?string $navigationLabel = 'Daftar Bank';
     protected static ?string $pluralModelLabel = 'Daftar Bank';
 

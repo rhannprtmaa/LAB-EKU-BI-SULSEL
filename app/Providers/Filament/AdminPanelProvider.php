@@ -2,23 +2,25 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Auth\Login;
+use App\Filament\Pages\Dashboard;
 use App\Filament\Resources\EkuTransactions\EkuTransactionResource;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Filament\Enums\ThemeMode;
+use Filament\FontProviders\GoogleFontProvider;
+use SebastianBergmann\Type\FalseType;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -28,21 +30,20 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('')
-            ->login()
+            ->login(Login::class)
+            ->topbar(False)
+            ->defaultThemeMode(ThemeMode::Light)
+            ->font('Plus Jakarta Sans', provider: GoogleFontProvider::class)
 
             // --- Tampilan Panel ---
+            ->viteTheme('resources/css/filament/admin/theme.css')
+            ->brandName('LAB EKU SULSEL')
+
             ->brandName('LAB EKU SULSEL')
             ->brandLogo(fn () => view('filament.admin.logo'))
             ->colors([
                 'primary' => Color::Hex('#054177'),
-                'gray'    => Color::Hex('#F5F5F5'),
-            ])
-
-            // --- Urutan Sidebar Menu ---
-            ->navigationGroups([
-                'Transaksi',
-                'Master Data',
-                'User Management',
+                'gray' => Color::Hex('#F5F5F5'),
             ])
 
             // --- Registrasi Resources ---
@@ -52,16 +53,12 @@ class AdminPanelProvider extends PanelProvider
             ])
 
             // --- Registrasi Pages ---
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
+            // Sengaja TIDAK pakai ->discoverPages(), karena folder Filament/Pages
+            // juga berisi Pages/Auth/Login.php yang sudah didaftarkan khusus lewat
+            // ->login() di atas. Kalau di-auto-discover juga sebagai page biasa,
+            // route-nya bisa bentrok / duplikat.
             ->pages([
                 Dashboard::class,
-            ])
-
-            // --- Registrasi Widgets ---
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
-            ->widgets([
-                AccountWidget::class,
-                FilamentInfoWidget::class,
             ])
 
             // --- Middleware Configuration ---

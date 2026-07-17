@@ -26,7 +26,7 @@ class EkuTransactionResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-arrows-right-left';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Transaksi';
+    protected static string|UnitEnum|null $navigationGroup = null;
 
     protected static ?string $navigationLabel = 'Pengajuan EKU';
     protected static ?string $pluralModelLabel = 'Daftar Pengajuan EKU';
