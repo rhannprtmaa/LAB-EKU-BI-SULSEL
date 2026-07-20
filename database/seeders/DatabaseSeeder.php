@@ -42,7 +42,7 @@ class DatabaseSeeder extends Seeder
             'is_active' => true,
         ]);
 
-        // 4. Akun User Perbankan
+
         User::create([
             'name' => 'Petugas Bank Sulselbar',
             'email' => 'eku@banksulselbar.co.id',

@@ -19,6 +19,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use App\Filament\Resources\EkuTransactions\Schemas\EkuTransactionInfolist;
 
 class EkuTransactionResource extends Resource
 {
@@ -65,23 +66,9 @@ class EkuTransactionResource extends Resource
     {
         $user = CurrentUser::get();
 
-        if (! $user) {
-            return false;
-        }
-
-        if ($user->isAdminBi()) {
-            return false;
-        }
-
-        if ($user->isUserBi()) {
-            return $record->status !== EkuTransaction::STATUS_DISETUJUI;
-        }
-
-        if ($user->isUserPerbankan()) {
-            return $record->bank_id === $user->bank_id && $record->isEditableByBankOwner();
-        }
-
-        return false;
+        return $user?->isUserPerbankan()
+            && $record->bank_id === $user->bank_id
+            && $record->isEditableByBankOwner();
     }
 
     public static function canDelete(Model $record): bool
@@ -118,5 +105,10 @@ class EkuTransactionResource extends Resource
             'edit' => EditEkuTransaction::route('/{record}/edit'),
             'view' => ViewEkuTransaction::route('/{record}'),
         ];
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return EkuTransactionInfolist::configure($schema);
     }
 }

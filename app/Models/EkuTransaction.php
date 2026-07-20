@@ -139,28 +139,40 @@ class EkuTransaction extends Model
             $processExcel($transaction->file_setoran, 'Setoran');
             $processExcel($transaction->file_penarikan, 'Penarikan');
 
-            // 4. PENGHITUNGAN GRAND TOTAL UNTUK DASHBOARD
-            $totals = $transaction->details()
-                ->selectRaw('
-                    SUM(kertas_100k) as total_100k, SUM(kertas_50k) as total_50k,
-                    SUM(kertas_20k) as total_20k, SUM(kertas_10k) as total_10k,
-                    SUM(kertas_5k) as total_5k, SUM(kertas_2k) as total_2k,
-                    SUM(kertas_1k) as total_1k, SUM(logam_1k) as total_l1k,
-                    SUM(logam_500) as total_l500, SUM(logam_200) as total_l200,
-                    SUM(logam_100) as total_l100, SUM(subtotal) as grand_total
-                ')->first();
-
-            if ($totals) {
-                DB::table('eku_transactions')->where('id', $transaction->id)->update([
-                    'kertas_100k' => $totals->total_100k ?? 0, 'kertas_50k' => $totals->total_50k ?? 0,
-                    'kertas_20k' => $totals->total_20k ?? 0, 'kertas_10k' => $totals->total_10k ?? 0,
-                    'kertas_5k' => $totals->total_5k ?? 0, 'kertas_2k' => $totals->total_2k ?? 0,
-                    'kertas_1k' => $totals->total_1k ?? 0, 'logam_1k' => $totals->total_l1k ?? 0,
-                    'logam_500' => $totals->total_l500 ?? 0, 'logam_200' => $totals->total_l200 ?? 0,
-                    'logam_100' => $totals->total_l100 ?? 0, 'total_nominal' => $totals->grand_total ?? 0,
-                ]);
-            }
+            // 4. Hitung ulang grand total (dipisah jadi method reusable,
+            //    karena juga dipanggil ulang tiap kali User BI mengedit satu
+            //    sel di tabel rincian lewat DetailsRelationManager).
+            static::recalculateTotals($transaction->id);
         });
+    }
+
+    // Menjumlahkan ulang semua kolom pecahan uang dari SELURUH baris detail
+    // (12 bulan x Setoran/Penarikan) menjadi grand total di tabel utama.
+    // Dipanggil otomatis setelah import Excel, ATAUPUN setelah User BI
+    // mengedit manual salah satu sel di tabel rincian bulanan.
+    public static function recalculateTotals(int $transactionId): void
+    {
+        $totals = EkuTransactionDetail::query()
+            ->where('eku_transaction_id', $transactionId)
+            ->selectRaw('
+                SUM(kertas_100k) as total_100k, SUM(kertas_50k) as total_50k,
+                SUM(kertas_20k) as total_20k, SUM(kertas_10k) as total_10k,
+                SUM(kertas_5k) as total_5k, SUM(kertas_2k) as total_2k,
+                SUM(kertas_1k) as total_1k, SUM(logam_1k) as total_l1k,
+                SUM(logam_500) as total_l500, SUM(logam_200) as total_l200,
+                SUM(logam_100) as total_l100, SUM(subtotal) as grand_total
+            ')->first();
+
+        if ($totals) {
+            DB::table('eku_transactions')->where('id', $transactionId)->update([
+                'kertas_100k' => $totals->total_100k ?? 0, 'kertas_50k' => $totals->total_50k ?? 0,
+                'kertas_20k' => $totals->total_20k ?? 0, 'kertas_10k' => $totals->total_10k ?? 0,
+                'kertas_5k' => $totals->total_5k ?? 0, 'kertas_2k' => $totals->total_2k ?? 0,
+                'kertas_1k' => $totals->total_1k ?? 0, 'logam_1k' => $totals->total_l1k ?? 0,
+                'logam_500' => $totals->total_l500 ?? 0, 'logam_200' => $totals->total_l200 ?? 0,
+                'logam_100' => $totals->total_l100 ?? 0, 'total_nominal' => $totals->grand_total ?? 0,
+            ]);
+        }
     }
 
     // --- Relasi Tabel ---

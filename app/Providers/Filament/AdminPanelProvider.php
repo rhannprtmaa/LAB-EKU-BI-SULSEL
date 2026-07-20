@@ -21,6 +21,7 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Filament\Enums\ThemeMode;
 use Filament\FontProviders\GoogleFontProvider;
 use SebastianBergmann\Type\FalseType;
+use App\Filament\Pages\KelolaTemplateEku;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -52,14 +53,9 @@ class AdminPanelProvider extends PanelProvider
             ->resources([
                 EkuTransactionResource::class,
             ])
-
-            // --- Registrasi Pages ---
-            // Sengaja TIDAK pakai ->discoverPages(), karena folder Filament/Pages
-            // juga berisi Pages/Auth/Login.php yang sudah didaftarkan khusus lewat
-            // ->login() di atas. Kalau di-auto-discover juga sebagai page biasa,
-            // route-nya bisa bentrok / duplikat.
             ->pages([
                 Dashboard::class,
+                KelolaTemplateEku::class,
             ])
 
             // --- Middleware Configuration ---
