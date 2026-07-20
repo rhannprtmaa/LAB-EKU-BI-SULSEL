@@ -1,8 +1,4 @@
 <x-filament-panels::page.simple>
-    {{-- 'fixed inset-0' sengaja dipakai supaya layout split-screen ini
-         menembus/mengabaikan container tengah bawaan Filament (yang biasanya
-         membuat card kecil di tengah layar), sehingga benar-benar full-screen
-         seperti wireframe. --}}
     <div class="fixed inset-0 z-40 flex min-h-screen bg-gray-100 dark:bg-gray-900 overflow-y-auto">
 
         {{-- SISI KIRI: Branding Bank Indonesia --}}
@@ -24,30 +20,25 @@
             </div>
         </div>
 
-        {{-- SISI KANAN: Form Login --}}
-        <div class="flex-1 flex items-center justify-center p-8 sm:p-12 lg:w-1/2 bg-white dark:bg-gray-800">
-            <div class="w-full max-w-md space-y-8">
-                <div class="text-center lg:text-left">
-                    <div class="flex items-center gap-3 justify-center lg:justify-start mb-2">
-                        <img src="{{ asset('images/logo-lab-eku.png') }}" alt="Logo" class="h-10 lg:hidden">
-                        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Sign In Akun</h2>
-                    </div>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Masukkan email dan password terdaftar kamu</p>
-                </div>
-
-                {{-- Form bawaan Filament (validasi, rate-limit, session error tetap jalan normal).
-                     Sengaja pakai <form> polos + tombol manual, karena component
-                     x-filament-panels::form.actions tidak tersedia di versi ini. --}}
-                <form wire:submit="authenticate" class="space-y-6">
-                    {{ $this->form }}
-
-                    <button type="submit"
-                        class="w-full rounded-lg py-3 font-semibold text-white transition hover:opacity-90"
-                        style="background-color:#054177;">
-                        Sign In
-                    </button>
-                </form>
+    {{-- SISI KANAN: Form Login --}}
+    <div class="flex-1 flex items-center justify-center p-8 sm:p-12 lg:w-1/2 bg-gray-50 dark:bg-gray-900">
+        <div class="w-full max-w-md space-y-8">
+            <div class="text-center">
+                <img src="{{ asset('images/logo-lab-eku.png') }}" alt="LAB EKU SULSEL" class="h-24 w-auto mx-auto mb-2">
             </div>
+
+        {{-- Card putih dengan shadow membungkus form login --}}
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-8 sm:p-10">
+            <form wire:submit="authenticate" class="space-y-6">
+                {{ $this->form }}
+
+                <button type="submit"
+                    class="w-full rounded-lg py-3 font-semibold text-white transition hover:opacity-90"
+                    style="background-color:#054177;">
+                    Sign In
+                </button>
+            </form>
         </div>
     </div>
+</div>
 </x-filament-panels::page.simple>

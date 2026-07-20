@@ -32,6 +32,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('')
             ->login(Login::class)
             ->topbar(False)
+            ->globalSearch(position: \Filament\Enums\GlobalSearchPosition::Topbar)
             ->defaultThemeMode(ThemeMode::Light)
             ->font('Plus Jakarta Sans', provider: GoogleFontProvider::class)
 

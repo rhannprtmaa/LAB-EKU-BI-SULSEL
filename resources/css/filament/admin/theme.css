@@ -1,13 +1,7 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
-
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
 
-/* ============================================================
-   SIDEBAR — navy blue minimalist & compact.
-   PENTING: nama class di bawah ini disalin PERSIS dari source
-   asli Filament (fi-sidebar-item-btn, bukan -button).
-   ============================================================ */
 .fi-sidebar {
     background-color: #054177;
     border-inline-end: none;
@@ -18,19 +12,25 @@
 }
 
 .fi-sidebar-nav {
-    padding: 1rem 0.875rem;
-    gap: 1.25rem;
+    padding: 4.5rem 0.975rem;
+    gap: 3.25rem;
 }
 
+/* Jarak antar item menu (biar tidak terlalu rapat) */
+.fi-sidebar-group-items {
+    gap: 0.5rem;
+}
+
+/* Icon & label default (item tidak aktif) — putih semi-transparan */
 .fi-sidebar-item-btn > .fi-icon {
     color: rgba(255, 255, 255, 0.65);
-    width: 1.15rem;
-    height: 1.15rem;
+    width: 1.2rem;
+    height: 1.2rem;
 }
 
 .fi-sidebar-item-label {
     color: rgba(255, 255, 255, 0.85);
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
 }
 
 .fi-sidebar-item.fi-sidebar-item-has-url > .fi-sidebar-item-btn:hover {
@@ -54,11 +54,54 @@
     font-weight: 600;
 }
 
+.fi-sidebar-footer {
+    background-color: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.875rem;
+}
+
+.fi-sidebar .fi-user-menu-trigger {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.fi-sidebar .fi-user-menu-trigger:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.fi-user-menu-trigger-text {
+    color: #ffffff !important;
+}
+
+.fi-sidebar .fi-user-menu-trigger .fi-icon {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.fi-sidebar-database-notifications-btn {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.fi-sidebar-database-notifications-btn:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.fi-sidebar-database-notifications-btn > .fi-icon {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* ============================================================
+   AREA KONTEN UTAMA — putih bersih di light mode,
+   abu gelap elegan (bukan hitam pekat) di dark mode
+   ============================================================ */
 .fi-main,
 .fi-body {
     @apply bg-white dark:bg-gray-950;
 }
 
+/* ============================================================
+   CARD / SECTION — bentuk lebih minimalist: radius lebih besar,
+   shadow tipis, border halus. Berlaku juga di semua resource
+   (table, form) bawaan Filament biar konsisten satu tema.
+   ============================================================ */
 .fi-section,
 .fi-ta-ctn,
 .fi-modal-window {
