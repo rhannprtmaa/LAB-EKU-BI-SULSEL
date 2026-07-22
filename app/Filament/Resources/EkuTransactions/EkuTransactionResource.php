@@ -2,8 +2,6 @@
 
 namespace App\Filament\Resources\EkuTransactions;
 
-use App\Filament\Resources\EkuTransactions\Pages\CreateEkuTransaction;
-use App\Filament\Resources\EkuTransactions\Pages\EditEkuTransaction;
 use App\Filament\Resources\EkuTransactions\Pages\ListEkuTransactions;
 use App\Filament\Resources\EkuTransactions\Pages\ViewEkuTransaction;
 use App\Filament\Resources\EkuTransactions\RelationManagers\DetailsRelationManager;
@@ -29,7 +27,7 @@ class EkuTransactionResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = null;
 
-    protected static ?string $navigationLabel = 'Pengajuan EKU';
+    protected static ?string $modelLabel = 'Pengajuan EKU';
     protected static ?string $pluralModelLabel = 'Daftar Pengajuan EKU';
 
     protected static ?int $navigationSort = 1;
@@ -97,15 +95,13 @@ class EkuTransactionResource extends Resource
         ];
     }
 
-    public static function getPages(): array
-    {
-        return [
-            'index' => ListEkuTransactions::route('/'),
-            'create' => CreateEkuTransaction::route('/create'),
-            'edit' => EditEkuTransaction::route('/{record}/edit'),
-            'view' => ViewEkuTransaction::route('/{record}'),
-        ];
-    }
+        public static function getPages(): array
+            {
+                return [
+                    'index' => ListEkuTransactions::route('/'),
+                    'view' => ViewEkuTransaction::route('/{record}'),
+                ];
+            }
 
     public static function infolist(Schema $schema): Schema
     {

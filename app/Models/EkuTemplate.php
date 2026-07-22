@@ -9,13 +9,16 @@ class EkuTemplate extends Model
 {
     protected $guarded = [];
 
+    public const JENIS_SETORAN = 'Setoran';
+    public const JENIS_PENARIKAN = 'Penarikan';
+
     public function uploader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploaded_by');
     }
 
-    public static function current(): ?self
+    public static function current(string $jenis): ?self
     {
-        return static::query()->latest('id')->first();
+        return static::query()->where('jenis', $jenis)->latest('id')->first();
     }
 }

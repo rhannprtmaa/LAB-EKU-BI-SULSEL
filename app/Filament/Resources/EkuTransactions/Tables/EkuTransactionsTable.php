@@ -12,6 +12,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Filament\Support\Enums\Width;
 
 class EkuTransactionsTable
 {
@@ -85,9 +86,12 @@ class EkuTransactionsTable
                     ->options(fn () => Bank::query()->pluck('name', 'id')->toArray())
                     ->searchable(),
             ])
-            ->actions([
-                ViewAction::make(),
-                EditAction::make(),
+          ->actions([
+                ViewAction::make()->label('Detail'),
+                EditAction::make()
+                ->label('Edit')
+                ->modalHeading('Edit Pengajuan EKU ')
+                ->modalWidth(Width::TwoExtraLarge),
                 DeleteAction::make(),
             ]);
     }

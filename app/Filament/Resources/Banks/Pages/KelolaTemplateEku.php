@@ -9,6 +9,7 @@ use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
 
@@ -39,15 +40,29 @@ class KelolaTemplateEku extends Page implements HasForms
     {
         return $schema
             ->components([
-                FileUpload::make('file_path')
-                    ->label('File Template Kerja EKU (Excel)')
-                    ->directory('template-eku')
-                    ->acceptedFileTypes([
-                        'application/vnd.ms-excel',
-                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    ])
-                    ->required()
-                    ->maxSize(5120),
+                Section::make('Template Setoran')
+                    ->schema([
+                        FileUpload::make('file_setoran')
+                            ->label('File Template Setoran (Excel)')
+                            ->directory('template-eku')
+                            ->acceptedFileTypes([
+                                'application/vnd.ms-excel',
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            ])
+                            ->maxSize(5120),
+                    ]),
+
+                Section::make('Template Penarikan')
+                    ->schema([
+                        FileUpload::make('file_penarikan')
+                            ->label('File Template Penarikan (Excel)')
+                            ->directory('template-eku')
+                            ->acceptedFileTypes([
+                                'application/vnd.ms-excel',
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            ])
+                            ->maxSize(5120),
+                    ]),
             ])
             ->statePath('data');
     }
@@ -56,22 +71,36 @@ class KelolaTemplateEku extends Page implements HasForms
     {
         $state = $this->form->getState();
 
-        EkuTemplate::create([
-            'nama_file' => basename($state['file_path']),
-            'file_path' => $state['file_path'],
-            'uploaded_by' => Auth::id(),
-        ]);
+        if (! empty($state['file_setoran'])) {
+            EkuTemplate::create([
+                'nama_file' => basename($state['file_setoran']),
+                'jenis' => EkuTemplate::JENIS_SETORAN,
+                'file_path' => $state['file_setoran'],
+                'uploaded_by' => Auth::id(),
+            ]);
+        }
 
-        Notification::make()
-            ->title('Template kerja EKU berhasil diperbarui')
-            ->success()
-            ->send();
+        if (! empty($state['file_penarikan'])) {
+            EkuTemplate::create([
+                'nama_file' => basename($state['file_penarikan']),
+                'jenis' => EkuTemplate::JENIS_PENARIKAN,
+                'file_path' => $state['file_penarikan'],
+                'uploaded_by' => Auth::id(),
+            ]);
+        }
+
+        Notification::make()->title('Template kerja EKU berhasil diperbarui')->success()->send();
 
         $this->form->fill();
     }
 
-    public function currentTemplate(): ?EkuTemplate
+    public function templateSetoran(): ?EkuTemplate
     {
-        return EkuTemplate::current();
+        return EkuTemplate::current(EkuTemplate::JENIS_SETORAN);
+    }
+
+    public function templatePenarikan(): ?EkuTemplate
+    {
+        return EkuTemplate::current(EkuTemplate::JENIS_PENARIKAN);
     }
 }

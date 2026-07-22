@@ -17,8 +17,13 @@ class TemplateKerjaWidget extends Widget
         return CurrentUser::get()?->isUserPerbankan() ?? false;
     }
 
-    public function getTemplate(): ?EkuTemplate
+    public function getTemplateSetoran(): ?EkuTemplate
     {
-        return EkuTemplate::current();
+        return EkuTemplate::current(EkuTemplate::JENIS_SETORAN);
+    }
+
+    public function getTemplatePenarikan(): ?EkuTemplate
+    {
+        return EkuTemplate::current(EkuTemplate::JENIS_PENARIKAN);
     }
 }

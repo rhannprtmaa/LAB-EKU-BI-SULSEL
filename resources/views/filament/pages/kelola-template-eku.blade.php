@@ -1,29 +1,44 @@
 <x-filament-panels::page>
-    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-6 mb-4">
-        <h3 class="font-semibold text-gray-800 dark:text-white mb-1">Template Saat Ini</h3>
+    <div class="rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden max-w-xl mb-6"
+         style="background-color:#EAF1F8;">
+        <div class="px-4 py-2.5 border-b border-black/5">
+            <p class="text-xs font-semibold uppercase tracking-wide" style="color:#054177;">Template Aktif Saat Ini</p>
+        </div>
 
-        @php($current = $this->currentTemplate())
+        <div class="divide-y divide-black/5">
+            @foreach ([
+                ['label' => 'Setoran', 'icon' => 'heroicon-o-arrow-down-circle', 'template' => $this->templateSetoran()],
+                ['label' => 'Penarikan', 'icon' => 'heroicon-o-arrow-up-circle', 'template' => $this->templatePenarikan()],
+            ] as $item)
+                <div class="flex items-center justify-between gap-3 px-4 py-2.5">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <x-dynamic-component :component="$item['icon']" class="w-4 h-4 shrink-0" style="color:#054177;" />
 
-        @if ($current)
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                    <x-heroicon-o-document-text class="w-5 h-5" />
-                    {{ $current->nama_file }}
-                    <span class="text-gray-400">— diupload {{ $current->created_at->diffForHumans() }}</span>
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-gray-700 truncate">{{ $item['label'] }}</p>
+                            <p class="text-xs text-gray-400 truncate">
+                                {{ $item['template']?->nama_file ?? 'Belum ada template' }}
+                            </p>
+                        </div>
+                    </div>
+
+                    @if ($item['template'])
+                        <a href="{{ Storage::disk('public')->url($item['template']->file_path) }}" target="_blank"
+                           class="inline-flex items-center gap-1 text-xs font-semibold shrink-0" style="color:#054177;">
+                            <x-heroicon-o-arrow-down-tray class="w-3.5 h-3.5" />
+                            Unduh
+                        </a>
+                    @endif
                 </div>
-
-                <a href="{{ Storage::disk('public')->url($current->file_path) }}" target="_blank"
-                   class="text-sm font-medium" style="color:#054177;">
-                    Unduh →
-                </a>
-            </div>
-        @else
-            <p class="text-sm text-gray-400">Belum ada template yang diupload.</p>
-        @endif
+            @endforeach
+        </div>
     </div>
 
-    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-6">
-        <h3 class="font-semibold text-gray-800 dark:text-white mb-4">Upload Template Baru</h3>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-6 max-w-xl">
+        <div class="flex items-center gap-2 mb-5">
+            <x-heroicon-o-arrow-up-tray class="w-5 h-5" style="color:#054177;" />
+            <h3 class="font-semibold text-gray-800 dark:text-white">Upload / Ganti Template</h3>
+        </div>
 
         <form wire:submit="save" class="space-y-6">
             {{ $this->form }}

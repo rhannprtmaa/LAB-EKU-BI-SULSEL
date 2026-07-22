@@ -10,6 +10,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Table;
+use Filament\Support\Enums\FontWeight;
 
 class DetailsRelationManager extends RelationManager
 {
@@ -59,7 +60,7 @@ class DetailsRelationManager extends RelationManager
         $kolom[] = TextColumn::make('subtotal')
             ->label('Subtotal')
             ->numeric(0, ',', '.')
-            ->bold();
+            ->weight(FontWeight::Bold);
 
         return $table
             ->recordTitleAttribute('bulan')

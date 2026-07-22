@@ -10,6 +10,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\Auth;
+use Filament\Support\Enums\Width;
 
 class ViewEkuTransaction extends ViewRecord
 {
@@ -25,6 +26,7 @@ class ViewEkuTransaction extends ViewRecord
                 ->visible(fn (): bool => (bool) CurrentUser::get()?->isUserBi()
                     && $this->record->status !== EkuTransaction::STATUS_DISETUJUI)
                 ->requiresConfirmation()
+                ->modalWidth(Width::Medium)
                 ->modalDescription('Pengajuan akan ditandai Disetujui dan dikunci. Bank akan menerima notifikasi.')
                 ->schema([
                     Textarea::make('catatan')
@@ -50,6 +52,7 @@ class ViewEkuTransaction extends ViewRecord
                 ->visible(fn (): bool => (bool) CurrentUser::get()?->isUserBi()
                     && $this->record->status !== EkuTransaction::STATUS_DISETUJUI)
                 ->requiresConfirmation()
+                ->modalWidth(Width::Medium)
                 ->modalDescription('Bank akan diminta memperbaiki dan mengunggah ulang data sesuai catatan.')
                 ->schema([
                     Textarea::make('catatan')->label('Catatan Perbaikan (wajib diisi)')->required()->rows(3),

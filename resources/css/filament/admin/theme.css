@@ -1,6 +1,12 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
+
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
+
+
+html {
+    font-size: 14px;
+}
 
 .fi-sidebar {
     background-color: #054177;
@@ -13,7 +19,7 @@
 
 .fi-sidebar-nav {
     padding: 4.5rem 0.975rem;
-    gap: 3.25rem;
+    gap: 1.25rem;
 }
 
 /* Jarak antar item menu (biar tidak terlalu rapat) */
