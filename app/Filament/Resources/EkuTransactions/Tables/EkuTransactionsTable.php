@@ -13,6 +13,10 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Filament\Support\Enums\Width;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class EkuTransactionsTable
 {
@@ -86,12 +90,35 @@ class EkuTransactionsTable
                     ->options(fn () => Bank::query()->pluck('name', 'id')->toArray())
                     ->searchable(),
             ])
-          ->actions([
+            ->actions([
                 ViewAction::make()->label('Detail'),
+                Action::make('acc')
+                    ->label('ACC')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Setujui Pengajuan Ini?')
+                    ->modalDescription('Apakah Anda yakin ingin menyetujui pengajuan EKU ini? Data Excel akan diproses dan grafik forecast akan diperbarui.')
+                    ->visible(function (EkuTransaction $record) use ($isInternalBi) {
+                        return $isInternalBi && in_array($record->status, [EkuTransaction::STATUS_MENUNGGU, EkuTransaction::STATUS_REVISI]);
+                    })
+                    ->action(function (EkuTransaction $record) {
+                        $record->status = EkuTransaction::STATUS_DISETUJUI;
+                        $record->approved_at = Carbon::now();
+                        $record->approved_by = Auth::id();
+                        $record->save();
+
+                        Notification::make()
+                            ->title('Pengajuan EKU Berhasil Disetujui')
+                            ->success()
+                            ->send();
+                    }),
+
                 EditAction::make()
-                ->label('Edit')
-                ->modalHeading('Edit Pengajuan EKU ')
-                ->modalWidth(Width::TwoExtraLarge),
+                    ->label('Edit')
+                    ->modalHeading('Edit Pengajuan EKU ')
+                    ->modalWidth(Width::TwoExtraLarge),
+
                 DeleteAction::make(),
             ]);
     }

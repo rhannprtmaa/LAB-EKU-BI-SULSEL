@@ -69,8 +69,11 @@ class EkuTransaction extends Model
 
         // static::saved digunakan agar Detail dieksekusi SETELAH transaksi utama punya ID
         static::saved(function ($transaction) {
+        if (! $transaction->wasChanged(['file_setoran', 'file_penarikan'])) {
+                return;
+            }
 
-            // 1. Hapus rincian lama jika ini adalah proses "Edit/Update" file Excel
+            // 1. Hapus rincian lama (karena file memang baru diganti/diupload)
             $transaction->details()->delete();
 
             // 2. Fungsi dinamis untuk membaca baris demi baris Excel
