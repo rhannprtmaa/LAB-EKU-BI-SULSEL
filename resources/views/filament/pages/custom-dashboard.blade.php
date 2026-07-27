@@ -82,11 +82,11 @@
                                       text-anchor="middle" class="fill-gray-400">{{ $lbl['label'] }}</text>
                             @endforeach
 
-                            {{-- Garis Penarikan (merah) --}}
-                            <polyline points="{{ $chart['penarikanPoints'] }}" fill="none" stroke="#fb7185" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                            {{-- Garis Penarikan (merah), melengkung (smooth curve) --}}
+                            <path d="{{ $chart['penarikanPath'] }}" fill="none" stroke="#fb7185" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
 
-                            {{-- Garis Setoran (hijau) --}}
-                            <polyline points="{{ $chart['setoranPoints'] }}" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                            {{-- Garis Setoran (hijau), melengkung (smooth curve) --}}
+                            <path d="{{ $chart['setoranPath'] }}" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                     @endif
                 @endif

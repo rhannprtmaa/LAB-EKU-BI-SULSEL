@@ -45,6 +45,9 @@ class KelolaTemplateEku extends Page implements HasForms
                         FileUpload::make('file_setoran')
                             ->label('File Template Setoran (Excel)')
                             ->directory('template-eku')
+                            ->getUploadedFileNameForStorageUsing(
+                                fn ($file) => date('YmdHis') . '_' . $file->getClientOriginalName()
+                            )
                             ->acceptedFileTypes([
                                 'application/vnd.ms-excel',
                                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -57,6 +60,9 @@ class KelolaTemplateEku extends Page implements HasForms
                         FileUpload::make('file_penarikan')
                             ->label('File Template Penarikan (Excel)')
                             ->directory('template-eku')
+                            ->getUploadedFileNameForStorageUsing(
+                                fn ($file) => date('YmdHis') . '_' . $file->getClientOriginalName()
+                            )
                             ->acceptedFileTypes([
                                 'application/vnd.ms-excel',
                                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
