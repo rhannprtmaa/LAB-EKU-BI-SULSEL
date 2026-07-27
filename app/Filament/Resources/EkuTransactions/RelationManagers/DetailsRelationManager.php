@@ -7,6 +7,7 @@ use App\Models\EkuTransactionDetail;
 use App\Support\CurrentUser;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Table;
@@ -28,39 +29,62 @@ class DetailsRelationManager extends RelationManager
         $bisaEdit = CurrentUser::get()?->isUserBi() ?? false;
 
         $kolomPecahan = [
-            'Rp 100.000' => 'kertas_100k',
-            'Rp 50.000' => 'kertas_50k',
-            'Rp 20.000' => 'kertas_20k',
-            'Rp 10.000' => 'kertas_10k',
-            'Rp 5.000' => 'kertas_5k',
-            'Rp 2.000' => 'kertas_2k',
+            'Rp 100.000'   => 'kertas_100k',
+            'Rp 50.000'    => 'kertas_50k',
+            'Rp 20.000'    => 'kertas_20k',
+            'Rp 10.000'    => 'kertas_10k',
+            'Rp 5.000'     => 'kertas_5k',
+            'Rp 2.000'     => 'kertas_2k',
             'Rp 1.000 (K)' => 'kertas_1k',
             'Rp 1.000 (L)' => 'logam_1k',
-            'Rp 500' => 'logam_500',
-            'Rp 200' => 'logam_200',
-            'Rp 100' => 'logam_100',
+            'Rp 500'       => 'logam_500',
+            'Rp 200'       => 'logam_200',
+            'Rp 100'       => 'logam_100',
         ];
 
         $kolom = [
-            TextColumn::make('bulan')->label('Bulan')->searchable(),
-            TextColumn::make('jenis_file')->label('Jenis')->badge()
+            TextColumn::make('bulan')
+                ->label('Bulan')
+                ->searchable()
+                ->sortable(),
+
+            TextColumn::make('jenis_file')
+                ->label('Jenis')
+                ->badge()
                 ->color(fn (string $state): string => match ($state) {
-                    'Setoran' => 'warning',
+                    'Setoran'   => 'warning',
                     'Penarikan' => 'info',
-                    default => 'gray',
+                    default     => 'gray',
                 }),
         ];
 
         foreach ($kolomPecahan as $label => $namaKolom) {
-            $kolom[] = $bisaEdit
-                ? $this->buildEditableColumn($namaKolom, $label)
-                : TextColumn::make($namaKolom)->label($label)->numeric(0, ',', '.');
+            if ($bisaEdit) {
+                // Kolom TextInputColumn tidak mendukung fungsi summarize() secara langsung,
+                // Namun nilainya tetap terefleksi jika direfresh atau di-save
+                $kolom[] = $this->buildEditableColumn($namaKolom, $label);
+            } else {
+                $kolom[] = TextColumn::make($namaKolom)
+                    ->label($label)
+                    ->numeric(0, ',', '.')
+                    ->summarize(
+                        Sum::make()
+                            ->label('Total')
+                            ->numeric(0, ',', '.')
+                    );
+            }
         }
 
+        // Subtotal + Grand Total Keseluruhan
         $kolom[] = TextColumn::make('subtotal')
             ->label('Subtotal')
             ->numeric(0, ',', '.')
-            ->weight(FontWeight::Bold);
+            ->weight(FontWeight::Bold)
+            ->summarize(
+                Sum::make()
+                    ->label('Grand Total')
+                    ->numeric(0, ',', '.')
+            );
 
         return $table
             ->recordTitleAttribute('bulan')

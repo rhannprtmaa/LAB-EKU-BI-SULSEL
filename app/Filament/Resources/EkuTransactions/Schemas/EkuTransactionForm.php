@@ -45,6 +45,7 @@ class EkuTransactionForm
                     ->label('File Excel Setoran')
                     ->disk('public')
                     ->directory('pengajuan-eku/setoran')
+                    ->visibility('public')
                     ->acceptedFileTypes([
                         'application/vnd.ms-excel',
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -55,6 +56,7 @@ class EkuTransactionForm
                     ->label('File Excel Penarikan')
                     ->disk('public')
                     ->directory('pengajuan-eku/penarikan')
+                    ->visibility('public')
                     ->acceptedFileTypes([
                         'application/vnd.ms-excel',
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

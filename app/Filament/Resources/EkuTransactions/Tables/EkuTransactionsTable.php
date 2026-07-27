@@ -41,14 +41,25 @@ class EkuTransactionsTable
                     ->label('Periode')
                     ->sortable(),
 
-                TextColumn::make('total_nominal')
-                    ->label('Total UPB & UPK')
-                    ->numeric(
-                        decimalPlaces: 0,
-                        decimalSeparator: ',',
-                        thousandsSeparator: '.',
-                    )
-                    ->sortable(),
+                TextColumn::make('total_setoran')
+                    ->label('Total Setoran')
+                    ->money('IDR', true)
+                    ->getStateUsing(function (EkuTransaction $record) {
+                        return $record->details()
+                            ->where('jenis_file', 'Setoran') // Menggunakan jenis_file
+                            ->get()
+                            ->sum(fn ($detail) => $detail->subtotal ?? ($detail->upb + $detail->upk));
+                    }),
+
+                TextColumn::make('total_penarikan')
+                    ->label('Total Penarikan')
+                    ->money('IDR', true)
+                    ->getStateUsing(function (EkuTransaction $record) {
+                        return $record->details()
+                            ->where('jenis_file', 'Penarikan') // Menggunakan jenis_file
+                            ->get()
+                            ->sum(fn ($detail) => $detail->subtotal ?? ($detail->upb + $detail->upk));
+                    }),
 
                 TextColumn::make('status')
                     ->label('Status')

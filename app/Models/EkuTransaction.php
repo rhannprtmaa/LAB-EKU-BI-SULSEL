@@ -62,18 +62,13 @@ class EkuTransaction extends Model
         });
 
         static::saved(function ($transaction) {
-            if (! $transaction->wasChanged(['file_setoran', 'file_penarikan'])) {
-                return;
+            // PERBAIKAN: Jalankan reprocessExcelFiles jika DATA BARU DIBUAT ATAU FILE BERUBAH
+            if ($transaction->wasRecentlyCreated || $transaction->wasChanged(['file_setoran', 'file_penarikan'])) {
+                $transaction->reprocessExcelFiles();
             }
-
-            $transaction->reprocessExcelFiles();
         });
     }
 
-    // Baca ulang file Excel Setoran & Penarikan, generate ulang seluruh baris
-    // detail bulanan, lalu hitung ulang grand total. Dipisah jadi method publik
-    // supaya bisa dipanggil PAKSA dari luar siklus save biasa — misalnya lewat
-    // `php artisan eku:reparse` untuk memperbaiki data lama yang sempat 0.
     public function reprocessExcelFiles(): array
     {
         $transaction = $this;
