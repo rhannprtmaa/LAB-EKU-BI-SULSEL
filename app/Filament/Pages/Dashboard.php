@@ -52,10 +52,10 @@ class Dashboard extends BaseDashboard implements HasForms
                         'tukab' => 'Tukab (segera hadir)',
                     ]),
 
-                Select::make('periode')
+               Select::make('periode')
                     ->label('Periode')
                     ->live()
-                    ->options(fn () => array_combine($this->availablePeriods(), $this->availablePeriods())),
+                    ->options(fn () => ['all' => 'Semua Tahun'] + array_combine($this->availablePeriods(), $this->availablePeriods())),
 
                 Select::make('bankIdFilter')
                     ->label('Jenis Bank')
@@ -100,7 +100,7 @@ class Dashboard extends BaseDashboard implements HasForms
             $query->where('bank_id', $this->data['bankIdFilter']);
         }
 
-        if (! empty($this->data['periode'])) {
+        if (! empty($this->data['periode']) && $this->data['periode'] !== 'all') {
             $query->where('periode', $this->data['periode']);
         }
 

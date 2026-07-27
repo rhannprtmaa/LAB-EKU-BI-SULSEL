@@ -43,6 +43,7 @@ class EkuTransactionForm
 
                 FileUpload::make('file_setoran')
                     ->label('File Excel Setoran')
+                    ->disk('public')
                     ->directory('pengajuan-eku/setoran')
                     ->acceptedFileTypes([
                         'application/vnd.ms-excel',
@@ -52,6 +53,7 @@ class EkuTransactionForm
 
                 FileUpload::make('file_penarikan')
                     ->label('File Excel Penarikan')
+                    ->disk('public')
                     ->directory('pengajuan-eku/penarikan')
                     ->acceptedFileTypes([
                         'application/vnd.ms-excel',
@@ -61,6 +63,7 @@ class EkuTransactionForm
 
                 FileUpload::make('file_lampiran')
                     ->label('File Lampiran (PDF / Pendukung)')
+                    ->disk('public')
                     ->directory('pengajuan-eku/lampiran')
                     ->acceptedFileTypes(['application/pdf', 'image/*'])
                     ->maxSize(10240)

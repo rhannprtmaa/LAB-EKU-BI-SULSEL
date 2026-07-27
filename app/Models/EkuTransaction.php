@@ -9,12 +9,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\EkuExcelImport;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Filament\Notifications\Notification;
 
 class EkuTransaction extends Model
 {
     protected $guarded = [];
 
-    // --- Status pengajuan (dipakai di Resource, Table, dan Form) ---
     public const STATUS_MENUNGGU = 'Menunggu';
     public const STATUS_DISETUJUI = 'Disetujui';
     public const STATUS_REVISI = 'Perlu Revisi';
@@ -39,13 +40,8 @@ class EkuTransaction extends Model
         ];
     }
 
-    // =========================================================================
-    // SIHIR OTOMATIS: Membaca Excel 12 Bulan (Januari - Desember)
-    // =========================================================================
     protected static function booted()
     {
-        // Saat pertama kali dibuat oleh User Perbankan, simpan salinan file ASLI
-        // supaya nanti bisa dibandingkan dengan versi yang direvisi User BI.
         static::creating(function ($transaction) {
             $transaction->file_setoran_original ??= $transaction->file_setoran;
             $transaction->file_penarikan_original ??= $transaction->file_penarikan;
@@ -53,8 +49,6 @@ class EkuTransaction extends Model
             $transaction->status ??= self::STATUS_MENUNGGU;
         });
 
-        // Saat diupdate (misalnya oleh User BI yang mengoreksi file), tandai is_edited_by_bi
-        // jika file yang sekarang berbeda dari file asli bank.
         static::updating(function ($transaction) {
             $fileBerubah = $transaction->isDirty(['file_setoran', 'file_penarikan'])
                 && (
@@ -67,92 +61,132 @@ class EkuTransaction extends Model
             }
         });
 
-        // static::saved digunakan agar Detail dieksekusi SETELAH transaksi utama punya ID
         static::saved(function ($transaction) {
-        if (! $transaction->wasChanged(['file_setoran', 'file_penarikan'])) {
+            if (! $transaction->wasChanged(['file_setoran', 'file_penarikan'])) {
                 return;
             }
 
-            // 1. Hapus rincian lama (karena file memang baru diganti/diupload)
-            $transaction->details()->delete();
-
-            // 2. Fungsi dinamis untuk membaca baris demi baris Excel
-            $processExcel = function($filePath, $jenisFile) use ($transaction) {
-                if (!$filePath) return;
-
-                $fullPath = storage_path('app/public/' . $filePath);
-                if (!file_exists($fullPath)) return;
-
-                // Buka dan ubah file Excel menjadi Array
-                $arrayData = Excel::toArray(new EkuExcelImport(), $fullPath);
-                if (empty($arrayData) || empty($arrayData[0])) return;
-
-                $sheet = $arrayData[0]; // Ambil Sheet yang pertama
-                $multiplier = 1000000;  // Standar BI (x 1 Juta)
-
-                // Fungsi kecil pembersih format angka (misal: "3.000" jadi 3000)
-                $clean = fn($val) => (float) str_replace(['.', ',', ' '], '', (string) $val);
-
-                // Daftar bulan yang akan dicari sistem di dalam Excel
-                $bulanValid = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-
-                // Looping (Pindai) seluruh baris dari atas ke bawah
-                foreach ($sheet as $row) {
-                    $namaBulan = null;
-
-                    // Cari apakah di baris ini terdapat nama bulan (Cek di Kolom A, B, atau C)
-                    foreach ([0, 1, 2] as $colIdx) {
-                        if (isset($row[$colIdx]) && in_array(trim((string)$row[$colIdx]), $bulanValid, true)) {
-                            $namaBulan = trim((string)$row[$colIdx]);
-                            break;
-                        }
-                    }
-
-                    // Jika baris ini terdeteksi sebagai baris Bulan (Misal: baris Januari), sedot datanya!
-                    if ($namaBulan) {
-                        $k100k = $clean($row[2] ?? 0) * $multiplier;
-                        $k50k  = $clean($row[3] ?? 0) * $multiplier;
-                        $k20k  = $clean($row[4] ?? 0) * $multiplier;
-                        $k10k  = $clean($row[5] ?? 0) * $multiplier;
-                        $k5k   = $clean($row[6] ?? 0) * $multiplier;
-                        $k2k   = $clean($row[7] ?? 0) * $multiplier;
-                        $k1k   = $clean($row[8] ?? 0) * $multiplier;
-
-                        $l1k   = $clean($row[10] ?? 0) * $multiplier;
-                        $l500  = $clean($row[11] ?? 0) * $multiplier;
-                        $l200  = $clean($row[12] ?? 0) * $multiplier;
-                        $l100  = $clean($row[13] ?? 0) * $multiplier;
-
-                        $subtotal = $k100k + $k50k + $k20k + $k10k + $k5k + $k2k + $k1k + $l1k + $l500 + $l200 + $l100;
-
-                        // Simpan rincian khusus bulan ini ke dalam database Detail
-                        $transaction->details()->create([
-                            'bulan' => $namaBulan,
-                            'jenis_file' => $jenisFile,
-                            'kertas_100k' => $k100k, 'kertas_50k' => $k50k, 'kertas_20k' => $k20k, 'kertas_10k' => $k10k,
-                            'kertas_5k' => $k5k, 'kertas_2k' => $k2k, 'kertas_1k' => $k1k,
-                            'logam_1k' => $l1k, 'logam_500' => $l500, 'logam_200' => $l200, 'logam_100' => $l100,
-                            'subtotal' => $subtotal
-                        ]);
-                    }
-                }
-            };
-
-            // 3. Eksekusi baca file secara bergantian (Jika di-upload)
-            $processExcel($transaction->file_setoran, 'Setoran');
-            $processExcel($transaction->file_penarikan, 'Penarikan');
-
-            // 4. Hitung ulang grand total (dipisah jadi method reusable,
-            //    karena juga dipanggil ulang tiap kali User BI mengedit satu
-            //    sel di tabel rincian lewat DetailsRelationManager).
-            static::recalculateTotals($transaction->id);
+            $transaction->reprocessExcelFiles();
         });
     }
 
-    // Menjumlahkan ulang semua kolom pecahan uang dari SELURUH baris detail
-    // (12 bulan x Setoran/Penarikan) menjadi grand total di tabel utama.
-    // Dipanggil otomatis setelah import Excel, ATAUPUN setelah User BI
-    // mengedit manual salah satu sel di tabel rincian bulanan.
+    // Baca ulang file Excel Setoran & Penarikan, generate ulang seluruh baris
+    // detail bulanan, lalu hitung ulang grand total. Dipisah jadi method publik
+    // supaya bisa dipanggil PAKSA dari luar siklus save biasa — misalnya lewat
+    // `php artisan eku:reparse` untuk memperbaiki data lama yang sempat 0.
+    public function reprocessExcelFiles(): array
+    {
+        $transaction = $this;
+
+        $transaction->details()->delete();
+
+        $processExcel = function($filePath, $jenisFile) use ($transaction) {
+            if (!$filePath) return 0;
+
+            if (! Storage::disk('public')->exists($filePath)) return 0;
+
+            $fullPath = Storage::disk('public')->path($filePath);
+
+            $arrayData = Excel::toArray(new EkuExcelImport(), $fullPath);
+            if (empty($arrayData) || empty($arrayData[0])) return 0;
+
+            $sheet = $arrayData[0];
+            $multiplier = 1000000; // Standar BI (x 1 Juta)
+
+            $clean = fn($val) => is_numeric($val)
+                ? (float) $val
+                : (float) str_replace(['.', ',', ' '], '', (string) $val);
+
+            $kolomBulan = [
+                3 => 'Januari', 4 => 'Februari', 5 => 'Maret', 6 => 'April',
+                7 => 'Mei', 8 => 'Juni', 9 => 'Juli', 10 => 'Agustus',
+                11 => 'September', 12 => 'Oktober', 13 => 'November', 14 => 'Desember',
+            ];
+
+            $petaKertas = [
+                100000 => 'kertas_100k', 50000 => 'kertas_50k', 20000 => 'kertas_20k',
+                10000 => 'kertas_10k', 5000 => 'kertas_5k', 2000 => 'kertas_2k', 1000 => 'kertas_1k',
+            ];
+            $petaLogam = [
+                1000 => 'logam_1k', 500 => 'logam_500', 200 => 'logam_200', 100 => 'logam_100',
+            ];
+
+            $akumulasi = [];
+            foreach ($kolomBulan as $namaBulan) {
+                $akumulasi[$namaBulan] = [
+                    'kertas_100k' => 0, 'kertas_50k' => 0, 'kertas_20k' => 0, 'kertas_10k' => 0,
+                    'kertas_5k' => 0, 'kertas_2k' => 0, 'kertas_1k' => 0,
+                    'logam_1k' => 0, 'logam_500' => 0, 'logam_200' => 0, 'logam_100' => 0,
+                ];
+            }
+
+            $section = null;
+
+            foreach ($sheet as $row) {
+                $jenisUang = strtoupper(trim((string) ($row[1] ?? '')));
+                $nominalRaw = $row[2] ?? null;
+
+                if (str_contains($jenisUang, 'UANG KERTAS')) {
+                    $section = 'kertas';
+                } elseif (str_contains($jenisUang, 'UANG LOGAM')) {
+                    $section = 'logam';
+                }
+
+                if (str_contains($jenisUang, 'TOTAL')) {
+                    continue;
+                }
+                if (is_string($nominalRaw) && str_contains(strtoupper($nominalRaw), 'TOTAL')) {
+                    continue;
+                }
+
+                if (! is_numeric($nominalRaw) || ! $section) {
+                    continue;
+                }
+
+                $nominal = (int) $nominalRaw;
+                $namaKolom = $section === 'kertas'
+                    ? ($petaKertas[$nominal] ?? null)
+                    : ($petaLogam[$nominal] ?? null);
+
+                if (! $namaKolom) {
+                    continue;
+                }
+
+                foreach ($kolomBulan as $colIdx => $namaBulan) {
+                    $akumulasi[$namaBulan][$namaKolom] += $clean($row[$colIdx] ?? 0) * $multiplier;
+                }
+            }
+
+            $baris = 0;
+            foreach ($akumulasi as $namaBulan => $pecahan) {
+                $transaction->details()->create(array_merge(
+                    ['bulan' => $namaBulan, 'jenis_file' => $jenisFile, 'subtotal' => array_sum($pecahan)],
+                    $pecahan
+                ));
+
+                $baris++;
+            }
+
+            return $baris;
+        };
+
+        $jumlahSetoran = $processExcel($transaction->file_setoran, 'Setoran');
+        $jumlahPenarikan = $processExcel($transaction->file_penarikan, 'Penarikan');
+
+        if ($jumlahSetoran === 0 && $jumlahPenarikan === 0 && ($transaction->file_setoran || $transaction->file_penarikan)) {
+            Notification::make()
+                ->title('Peringatan: Excel tidak berhasil dibaca')
+                ->body('Sistem tidak menemukan struktur "UANG KERTAS" / "UANG LOGAM" di file yang diupload. Pastikan file mengikuti format Template Kerja EKU.')
+                ->warning()
+                ->persistent()
+                ->send();
+        }
+
+        static::recalculateTotals($transaction->id);
+
+        return ['setoran' => $jumlahSetoran, 'penarikan' => $jumlahPenarikan];
+    }
+
     public static function recalculateTotals(int $transactionId): void
     {
         $totals = EkuTransactionDetail::query()
@@ -178,26 +212,22 @@ class EkuTransaction extends Model
         }
     }
 
-    // --- Relasi Tabel ---
     public function bank(): BelongsTo { return $this->belongsTo(Bank::class); }
     public function user(): BelongsTo { return $this->belongsTo(User::class, 'user_id'); }
     public function approver(): BelongsTo { return $this->belongsTo(User::class, 'approved_by'); }
 
-    // Relasi ke Tabel Detail Bulanan
     public function details(): HasMany { return $this->hasMany(EkuTransactionDetail::class); }
 
-    // --- Scope: batasi query sesuai bank tertentu (dipakai untuk User Perbankan) ---
     public function scopeForBank(Builder $query, ?int $bankId): Builder
     {
         return $bankId ? $query->where('bank_id', $bankId) : $query;
     }
-    // Bisa diedit oleh User Perbankan pemilik? (hanya saat status masih terbuka utk revisi)
+
     public function isEditableByBankOwner(): bool
     {
         return in_array($this->status, [self::STATUS_MENUNGGU, self::STATUS_REVISI], true);
     }
 
-    // Sudah final (tidak bisa diubah lagi oleh siapapun kecuali dibuka ulang)
     public function isLocked(): bool
     {
         return $this->status === self::STATUS_DISETUJUI;

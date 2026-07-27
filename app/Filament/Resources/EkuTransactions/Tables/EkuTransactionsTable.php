@@ -42,7 +42,7 @@ class EkuTransactionsTable
                     ->sortable(),
 
                 TextColumn::make('total_nominal')
-                    ->label('Total Nominal (Rp)')
+                    ->label('Total UPB & UPK')
                     ->numeric(
                         decimalPlaces: 0,
                         decimalSeparator: ',',
