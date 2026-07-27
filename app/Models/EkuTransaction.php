@@ -40,7 +40,7 @@ class EkuTransaction extends Model
         ];
     }
 
-    protected static function booted()
+   protected static function booted()
     {
         static::creating(function ($transaction) {
             $transaction->file_setoran_original ??= $transaction->file_setoran;
@@ -62,6 +62,16 @@ class EkuTransaction extends Model
         });
 
         static::saved(function ($transaction) {
+            // Untuk record yang baru pertama kali dibuat (INSERT), Eloquent
+            // tidak mengisi wasChanged() sama sekali (itu cuma disinkronkan
+            // saat UPDATE oleh Laravel), jadi kita cek wasRecentlyCreated dulu
+            // supaya pengajuan baru langsung diproses tanpa perlu eku:reparse.
+            if ($transaction->wasRecentlyCreated) {
+                $transaction->reprocessExcelFiles();
+
+                return;
+            }
+
             if (! $transaction->wasChanged(['file_setoran', 'file_penarikan'])) {
                 return;
             }
