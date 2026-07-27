@@ -7,11 +7,12 @@ use App\Models\EkuTransactionDetail;
 use App\Support\CurrentUser;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
-use Filament\Support\Enums\FontWeight;
 
 class DetailsRelationManager extends RelationManager
 {
@@ -29,66 +30,68 @@ class DetailsRelationManager extends RelationManager
         $bisaEdit = CurrentUser::get()?->isUserBi() ?? false;
 
         $kolomPecahan = [
-            'Rp 100.000'   => 'kertas_100k',
-            'Rp 50.000'    => 'kertas_50k',
-            'Rp 20.000'    => 'kertas_20k',
-            'Rp 10.000'    => 'kertas_10k',
-            'Rp 5.000'     => 'kertas_5k',
-            'Rp 2.000'     => 'kertas_2k',
+            'Rp 100.000' => 'kertas_100k',
+            'Rp 50.000' => 'kertas_50k',
+            'Rp 20.000' => 'kertas_20k',
+            'Rp 10.000' => 'kertas_10k',
+            'Rp 5.000' => 'kertas_5k',
+            'Rp 2.000' => 'kertas_2k',
             'Rp 1.000 (K)' => 'kertas_1k',
             'Rp 1.000 (L)' => 'logam_1k',
-            'Rp 500'       => 'logam_500',
-            'Rp 200'       => 'logam_200',
-            'Rp 100'       => 'logam_100',
+            'Rp 500' => 'logam_500',
+            'Rp 200' => 'logam_200',
+            'Rp 100' => 'logam_100',
+        ];
+
+        $urutanBulan = [
+            'Januari' => 1, 'Februari' => 2, 'Maret' => 3, 'April' => 4,
+            'Mei' => 5, 'Juni' => 6, 'Juli' => 7, 'Agustus' => 8,
+            'September' => 9, 'Oktober' => 10, 'November' => 11, 'Desember' => 12,
         ];
 
         $kolom = [
             TextColumn::make('bulan')
                 ->label('Bulan')
                 ->searchable()
-                ->sortable(),
-
-            TextColumn::make('jenis_file')
-                ->label('Jenis')
-                ->badge()
-                ->color(fn (string $state): string => match ($state) {
-                    'Setoran'   => 'warning',
-                    'Penarikan' => 'info',
-                    default     => 'gray',
-                }),
+                ->summarize(
+                    \Filament\Tables\Columns\Summarizers\Summarizer::make()
+                        ->label('Grand Total')
+                        ->using(fn () => 'Grand Total')
+                ),
         ];
 
         foreach ($kolomPecahan as $label => $namaKolom) {
-            if ($bisaEdit) {
-                // Kolom TextInputColumn tidak mendukung fungsi summarize() secara langsung,
-                // Namun nilainya tetap terefleksi jika direfresh atau di-save
-                $kolom[] = $this->buildEditableColumn($namaKolom, $label);
-            } else {
-                $kolom[] = TextColumn::make($namaKolom)
-                    ->label($label)
-                    ->numeric(0, ',', '.')
-                    ->summarize(
-                        Sum::make()
-                            ->label('Total')
-                            ->numeric(0, ',', '.')
-                    );
-            }
+            $kolom[] = ($bisaEdit
+                ? $this->buildEditableColumn($namaKolom, $label)
+                : TextColumn::make($namaKolom)->label($label)->numeric(0, ',', '.')
+            )->summarize(
+                Sum::make()->label('')->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.')
+            );
         }
 
-        // Subtotal + Grand Total Keseluruhan
         $kolom[] = TextColumn::make('subtotal')
             ->label('Subtotal')
             ->numeric(0, ',', '.')
             ->weight(FontWeight::Bold)
             ->summarize(
-                Sum::make()
-                    ->label('Grand Total')
-                    ->numeric(0, ',', '.')
+                Sum::make()->label('')->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.')
             );
 
         return $table
             ->recordTitleAttribute('bulan')
             ->columns($kolom)
+            ->defaultGroup(
+                Group::make('jenis_file')
+                    ->label('Jenis')
+                    ->collapsible()
+            )
+            ->modifyQueryUsing(function ($query) use ($urutanBulan) {
+                $caseSql = 'CASE bulan ' . collect($urutanBulan)
+                    ->map(fn ($angka, $bulan) => "WHEN '{$bulan}' THEN {$angka}")
+                    ->implode(' ') . ' END';
+
+                return $query->orderBy('jenis_file')->orderByRaw($caseSql);
+            })
             ->filters([])
             ->headerActions([])
             ->actions([])

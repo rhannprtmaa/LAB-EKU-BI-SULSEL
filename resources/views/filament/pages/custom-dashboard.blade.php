@@ -1,17 +1,5 @@
 <x-filament-panels::page>
-
-    {{-- Wrapper flex-col dibikin pas 1 layar (tidak scroll). Angka "6rem" di
-         bawah ini adalah perkiraan tinggi padding bawaan Filament di luar
-         wrapper ini — kalau di layarmu masih kepotong sedikit / masih ada
-         sisa gap, tinggal naik/turunkan angka itu saja. --}}
     <div class="flex flex-col gap-3" style="height: calc(100vh - 6rem); min-height: 500px;">
-
-        {{-- ============================== --}}
-        {{-- HEADER CUSTOM (pengganti topbar) --}}
-        {{-- Cukup judul + search saja di sini — account & notifikasi sudah
-             otomatis ada di bagian bawah sidebar (fi-sidebar-footer), jadi
-             tidak perlu diduplikasi di sini. --}}
-        {{-- ============================== --}}
         <div class="flex items-center justify-between gap-4 shrink-0">
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
 
@@ -22,9 +10,6 @@
             @endif
         </div>
 
-        {{-- ============================== --}}
-        {{-- 4 KARTU RINGKASAN --}}
-        {{-- ============================== --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
             @php
                 $colorMap = [
@@ -47,17 +32,9 @@
                 </div>
             @endforeach
         </div>
-
-        {{-- ============================== --}}
-        {{-- FILTER: Jenis Grafik / Periode / Jenis Bank --}}
-        {{-- ============================== --}}
         <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4 shrink-0">
             {{ $this->form }}
         </div>
-
-        {{-- ============================== --}}
-        {{-- KARTU GRAFIK — mengisi semua sisa ruang yang ada (flex-1) --}}
-        {{-- ============================== --}}
         <div class="flex-1 min-h-0 flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
             <div class="flex items-center justify-between mb-3 shrink-0">
                 <h3 class="font-semibold text-gray-800 dark:text-white">Grafik</h3>
@@ -72,7 +49,7 @@
 
             <div class="flex-1 min-h-0 flex items-center justify-center">
                 @if ($this->data['jenisGrafik'] !== 'forecast_eku')
-                   
+
                     <div class="flex flex-col items-center justify-center text-center text-gray-400">
                         <x-heroicon-o-chart-bar class="w-10 h-10 mb-3" />
                         <p class="font-medium">Grafik ini belum tersedia</p>

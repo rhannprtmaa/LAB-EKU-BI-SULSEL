@@ -52,7 +52,7 @@ class Dashboard extends BaseDashboard implements HasForms
                         'tukab' => 'Tukab (segera hadir)',
                     ]),
 
-               Select::make('periode')
+                Select::make('periode')
                     ->label('Periode')
                     ->live()
                     ->options(fn () => ['all' => 'Semua Tahun'] + array_combine($this->availablePeriods(), $this->availablePeriods())),
@@ -188,16 +188,49 @@ class Dashboard extends BaseDashboard implements HasForms
         $n = count($data['labels']);
         $stepX = $n > 1 ? $plotWidth / ($n - 1) : 0;
 
-        $toPoints = function (array $values) use ($max, $stepX, $paddingLeft, $paddingTop, $plotHeight) {
-            $points = [];
+        $toXY = function (array $values) use ($max, $stepX, $paddingLeft, $paddingTop, $plotHeight) {
+            $titik = [];
             foreach (array_values($values) as $i => $v) {
                 $x = $paddingLeft + $i * $stepX;
                 $y = $paddingTop + $plotHeight - ($max > 0 ? ($v / $max) * $plotHeight : 0);
-                $points[] = round($x, 1) . ',' . round($y, 1);
+                $titik[] = [round($x, 1), round($y, 1)];
             }
 
-            return implode(' ', $points);
+            return $titik;
         };
+
+        $toSmoothPath = function (array $titik): string {
+            $n = count($titik);
+            if ($n === 0) {
+                return '';
+            }
+            if ($n === 1) {
+                return "M {$titik[0][0]},{$titik[0][1]}";
+            }
+
+            $d = "M {$titik[0][0]},{$titik[0][1]}";
+
+            for ($i = 0; $i < $n - 1; $i++) {
+                $p0 = $titik[$i - 1] ?? $titik[$i];
+                $p1 = $titik[$i];
+                $p2 = $titik[$i + 1];
+                $p3 = $titik[$i + 2] ?? $p2;
+
+                $cp1x = round($p1[0] + ($p2[0] - $p0[0]) / 6, 2);
+                $cp1y = round($p1[1] + ($p2[1] - $p0[1]) / 6, 2);
+                $cp2x = round($p2[0] - ($p3[0] - $p1[0]) / 6, 2);
+                $cp2y = round($p2[1] - ($p3[1] - $p1[1]) / 6, 2);
+
+                $d .= " C {$cp1x},{$cp1y} {$cp2x},{$cp2y} {$p2[0]},{$p2[1]}";
+            }
+
+            return $d;
+        };
+
+        $toPointsString = fn (array $titik) => implode(' ', array_map(fn ($t) => "{$t[0]},{$t[1]}", $titik));
+
+        $setoranXY = $toXY($data['setoran']);
+        $penarikanXY = $toXY($data['penarikan']);
 
         $labelPositions = [];
         foreach ($data['labels'] as $i => $label) {
@@ -224,8 +257,10 @@ class Dashboard extends BaseDashboard implements HasForms
             'plotHeight' => $plotHeight,
             'labels' => $labelPositions,
             'gridLines' => $gridLines,
-            'setoranPoints' => $toPoints($data['setoran']),
-            'penarikanPoints' => $toPoints($data['penarikan']),
+            'setoranPath' => $toSmoothPath($setoranXY),
+            'penarikanPath' => $toSmoothPath($penarikanXY),
+            'setoranPoints' => $toPointsString($setoranXY),
+            'penarikanPoints' => $toPointsString($penarikanXY),
             'hasData' => array_sum($data['setoran']) > 0 || array_sum($data['penarikan']) > 0,
         ];
     }
@@ -257,6 +292,7 @@ class Dashboard extends BaseDashboard implements HasForms
         }
 
         $periods = $query->distinct()->pluck('periode')->toArray();
+
         $defaults = [(string) now()->year, (string) (now()->year + 1)];
 
         return collect(array_unique(array_merge($periods, $defaults)))

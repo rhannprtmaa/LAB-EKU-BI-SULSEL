@@ -8,15 +8,11 @@ use App\Support\CurrentUser;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Filament\Support\Enums\Width;
-use Filament\Actions\Action;
-use Filament\Notifications\Notification;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Auth;
 
 class EkuTransactionsTable
 {
@@ -43,23 +39,21 @@ class EkuTransactionsTable
 
                 TextColumn::make('total_setoran')
                     ->label('Total Setoran')
-                    ->money('IDR', true)
-                    ->getStateUsing(function (EkuTransaction $record) {
-                        return $record->details()
-                            ->where('jenis_file', 'Setoran') // Menggunakan jenis_file
-                            ->get()
-                            ->sum(fn ($detail) => $detail->subtotal ?? ($detail->upb + $detail->upk));
-                    }),
+                    ->numeric(
+                        decimalPlaces: 0,
+                        decimalSeparator: ',',
+                        thousandsSeparator: '.',
+                    )
+                    ->sortable(),
 
                 TextColumn::make('total_penarikan')
                     ->label('Total Penarikan')
-                    ->money('IDR', true)
-                    ->getStateUsing(function (EkuTransaction $record) {
-                        return $record->details()
-                            ->where('jenis_file', 'Penarikan') // Menggunakan jenis_file
-                            ->get()
-                            ->sum(fn ($detail) => $detail->subtotal ?? ($detail->upb + $detail->upk));
-                    }),
+                    ->numeric(
+                        decimalPlaces: 0,
+                        decimalSeparator: ',',
+                        thousandsSeparator: '.',
+                    )
+                    ->sortable(),
 
                 TextColumn::make('status')
                     ->label('Status')
@@ -102,34 +96,12 @@ class EkuTransactionsTable
                     ->searchable(),
             ])
             ->actions([
-                ViewAction::make()->label('Detail'),
-                Action::make('acc')
-                    ->label('ACC')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('Setujui Pengajuan Ini?')
-                    ->modalDescription('Apakah Anda yakin ingin menyetujui pengajuan EKU ini? Data Excel akan diproses dan grafik forecast akan diperbarui.')
-                    ->visible(function (EkuTransaction $record) use ($isInternalBi) {
-                        return $isInternalBi && in_array($record->status, [EkuTransaction::STATUS_MENUNGGU, EkuTransaction::STATUS_REVISI]);
-                    })
-                    ->action(function (EkuTransaction $record) {
-                        $record->status = EkuTransaction::STATUS_DISETUJUI;
-                        $record->approved_at = Carbon::now();
-                        $record->approved_by = Auth::id();
-                        $record->save();
-
-                        Notification::make()
-                            ->title('Pengajuan EKU Berhasil Disetujui')
-                            ->success()
-                            ->send();
-                    }),
-
+                ViewAction::make()
+                    ->label('Detail'),
                 EditAction::make()
                     ->label('Edit')
-                    ->modalHeading('Edit Pengajuan EKU ')
+                    ->modalHeading('Edit Pengajuan EKU')
                     ->modalWidth(Width::TwoExtraLarge),
-
                 DeleteAction::make(),
             ]);
     }

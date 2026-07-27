@@ -62,10 +62,11 @@ class EkuTransaction extends Model
         });
 
         static::saved(function ($transaction) {
-            // PERBAIKAN: Jalankan reprocessExcelFiles jika DATA BARU DIBUAT ATAU FILE BERUBAH
-            if ($transaction->wasRecentlyCreated || $transaction->wasChanged(['file_setoran', 'file_penarikan'])) {
-                $transaction->reprocessExcelFiles();
+            if (! $transaction->wasChanged(['file_setoran', 'file_penarikan'])) {
+                return;
             }
+
+            $transaction->reprocessExcelFiles();
         });
     }
 
@@ -86,7 +87,7 @@ class EkuTransaction extends Model
             if (empty($arrayData) || empty($arrayData[0])) return 0;
 
             $sheet = $arrayData[0];
-            $multiplier = 1000000; // Standar BI (x 1 Juta)
+            $multiplier = 1000000;
 
             $clean = fn($val) => is_numeric($val)
                 ? (float) $val
@@ -195,6 +196,12 @@ class EkuTransaction extends Model
                 SUM(logam_100) as total_l100, SUM(subtotal) as grand_total
             ')->first();
 
+        $totalPerJenis = EkuTransactionDetail::query()
+            ->where('eku_transaction_id', $transactionId)
+            ->selectRaw('jenis_file, SUM(subtotal) as total')
+            ->groupBy('jenis_file')
+            ->pluck('total', 'jenis_file');
+
         if ($totals) {
             DB::table('eku_transactions')->where('id', $transactionId)->update([
                 'kertas_100k' => $totals->total_100k ?? 0, 'kertas_50k' => $totals->total_50k ?? 0,
@@ -203,6 +210,8 @@ class EkuTransaction extends Model
                 'kertas_1k' => $totals->total_1k ?? 0, 'logam_1k' => $totals->total_l1k ?? 0,
                 'logam_500' => $totals->total_l500 ?? 0, 'logam_200' => $totals->total_l200 ?? 0,
                 'logam_100' => $totals->total_l100 ?? 0, 'total_nominal' => $totals->grand_total ?? 0,
+                'total_setoran' => $totalPerJenis['Setoran'] ?? 0,
+                'total_penarikan' => $totalPerJenis['Penarikan'] ?? 0,
             ]);
         }
     }
