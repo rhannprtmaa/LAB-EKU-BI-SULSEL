@@ -11,7 +11,6 @@ use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
-use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 
 class DetailsRelationManager extends RelationManager
@@ -19,6 +18,10 @@ class DetailsRelationManager extends RelationManager
     protected static string $relationship = 'details';
 
     protected static ?string $title = 'Rincian Proyeksi EKU Bulanan';
+
+    // View custom, supaya bisa nambahin panel ringkasan breakdown di bawah
+    // tabel (bawaan Filament cuma render tabel-nya saja).
+    protected string $view = 'filament.relation-managers.eku-details-relation-manager';
 
     public function form(Schema $schema): Schema
     {
@@ -58,6 +61,15 @@ class DetailsRelationManager extends RelationManager
                         ->label('Grand Total')
                         ->using(fn () => 'Grand Total')
                 ),
+
+            TextColumn::make('jenis_file')
+                ->label('Jenis')
+                ->badge()
+                ->color(fn (string $state): string => match ($state) {
+                    'Setoran' => 'warning',
+                    'Penarikan' => 'info',
+                    default => 'gray',
+                }),
         ];
 
         foreach ($kolomPecahan as $label => $namaKolom) {
@@ -79,16 +91,8 @@ class DetailsRelationManager extends RelationManager
 
         return $table
             ->recordTitleAttribute('bulan')
-            // --- DITAMBAHKAN DI SINI ---
-            ->paginated([12, 24]) 
-            ->defaultPaginationPageOption(12)
-            // ---------------------------
             ->columns($kolom)
-            ->defaultGroup(
-                Group::make('jenis_file')
-                    ->label('Jenis')
-                    ->collapsible()
-            )
+            ->paginationPageOptions([6, 12, 24])
             ->modifyQueryUsing(function ($query) use ($urutanBulan) {
                 $caseSql = 'CASE bulan ' . collect($urutanBulan)
                     ->map(fn ($angka, $bulan) => "WHEN '{$bulan}' THEN {$angka}")
@@ -100,6 +104,35 @@ class DetailsRelationManager extends RelationManager
             ->headerActions([])
             ->actions([])
             ->bulkActions([]);
+    }
+
+    // --- Panel ringkasan breakdown di bawah tabel ---
+    // UPB (Uang Pecahan Besar) = 100rb + 50rb.
+    // UPK (Uang Pecahan Kecil) = 20rb ke bawah (kertas) + semua uang logam.
+    public function getRingkasan(): array
+    {
+        $details = $this->getOwnerRecord()->details;
+
+        $totalSetoran = (float) $details->where('jenis_file', 'Setoran')->sum('subtotal');
+        $totalPenarikan = (float) $details->where('jenis_file', 'Penarikan')->sum('subtotal');
+
+        $totalUK = (float) $details->sum(fn ($d) => $d->kertas_100k + $d->kertas_50k + $d->kertas_20k
+            + $d->kertas_10k + $d->kertas_5k + $d->kertas_2k + $d->kertas_1k);
+
+        $totalUL = (float) $details->sum(fn ($d) => $d->logam_1k + $d->logam_500 + $d->logam_200 + $d->logam_100);
+
+        $totalUPB = (float) $details->sum(fn ($d) => $d->kertas_100k + $d->kertas_50k);
+        $totalUPK = (float) $details->sum('subtotal') - $totalUPB;
+
+        return [
+            'totalSetoran' => $totalSetoran,
+            'totalPenarikan' => $totalPenarikan,
+            'totalUK' => $totalUK,
+            'totalUL' => $totalUL,
+            'totalUPB' => $totalUPB,
+            'totalUPK' => $totalUPK,
+            'grandTotal' => $totalSetoran + $totalPenarikan,
+        ];
     }
 
     protected function buildEditableColumn(string $namaKolom, string $label): TextInputColumn
