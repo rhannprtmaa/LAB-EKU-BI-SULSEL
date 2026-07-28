@@ -79,6 +79,10 @@ class DetailsRelationManager extends RelationManager
 
         return $table
             ->recordTitleAttribute('bulan')
+            // --- DITAMBAHKAN DI SINI ---
+            ->paginated([12, 24]) 
+            ->defaultPaginationPageOption(12)
+            // ---------------------------
             ->columns($kolom)
             ->defaultGroup(
                 Group::make('jenis_file')

@@ -107,4 +107,6 @@ class EkuTransactionResource extends Resource
     {
         return EkuTransactionInfolist::configure($schema);
     }
+
+    
 }

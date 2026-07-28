@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Auth;
 
 class BankResource extends Resource
 {
+
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?string $model = Bank::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingLibrary;
@@ -55,7 +57,6 @@ class BankResource extends Resource
     public static function getPages(): array
     {
         return [
-            // FIX MODAL: Rute create & edit dihapus agar otomatis menjadi Pop-up
             'index' => ListBanks::route('/'),
         ];
     }

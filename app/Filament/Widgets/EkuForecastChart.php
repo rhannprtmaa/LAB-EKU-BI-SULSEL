@@ -26,12 +26,7 @@ class EkuForecastChart extends ChartWidget
                 ->sum('subtotal');
         }
 
-        // --- TIPS MENGUJI LENGKUNGAN (DUMMY DATA VARIATIF) ---
-        // Jika data DB kamu masih sama semua nilainya, kamu bisa hapus tanda komentar di 2 baris bawah ini untuk tes visual melengkungnya:
-        // $setoranData = [8, 12, 10, 15, 9, 14, 20, 18, 11, 16, 13, 19];
-        // $penarikanData = [5, 8, 7, 10, 6, 11, 13, 12, 9, 14, 10, 15];
-
-        return [
+         return [
             'datasets' => [
                 [
                     'label' => 'Total Setoran',
@@ -49,7 +44,7 @@ class EkuForecastChart extends ChartWidget
                     'data' => $penarikanData,
                     'borderColor' => '#ef4444', // Warna Merah
                     'backgroundColor' => 'rgba(239, 68, 68, 0.1)',
-                    'tension' => 0.4, 
+                    'tension' => 0.4,
                     'pointRadius' => 5,
                     'pointHoverRadius' => 8,
                     'pointBackgroundColor' => '#ef4444',

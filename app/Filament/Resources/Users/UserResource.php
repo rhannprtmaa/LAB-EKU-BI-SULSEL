@@ -20,7 +20,7 @@ class UserResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
     protected static string|UnitEnum|null $navigationGroup = null;
-    protected static ?string $navigationLabel = 'Daftar Pengguna';
+    protected static ?string $navigationLabel = 'User Management ';
     protected static ?string $pluralModelLabel = 'Daftar Pengguna';
 
     // FIX SIDEBAR: Urutan ketiga di menu
