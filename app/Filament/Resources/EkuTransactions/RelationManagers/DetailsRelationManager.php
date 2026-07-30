@@ -11,6 +11,7 @@ use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class DetailsRelationManager extends RelationManager
@@ -19,8 +20,6 @@ class DetailsRelationManager extends RelationManager
 
     protected static ?string $title = 'Rincian Proyeksi EKU Bulanan';
 
-    // View custom, supaya bisa nambahin panel ringkasan breakdown di bawah
-    // tabel (bawaan Filament cuma render tabel-nya saja).
     protected string $view = 'filament.relation-managers.eku-details-relation-manager';
 
     public function form(Schema $schema): Schema
@@ -92,7 +91,7 @@ class DetailsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('bulan')
             ->columns($kolom)
-            ->paginationPageOptions([6, 12, 24])
+            ->paginated(false)
             ->modifyQueryUsing(function ($query) use ($urutanBulan) {
                 $caseSql = 'CASE bulan ' . collect($urutanBulan)
                     ->map(fn ($angka, $bulan) => "WHEN '{$bulan}' THEN {$angka}")
@@ -100,15 +99,19 @@ class DetailsRelationManager extends RelationManager
 
                 return $query->orderBy('jenis_file')->orderByRaw($caseSql);
             })
-            ->filters([])
+            ->filters([
+                SelectFilter::make('jenis_file')
+                    ->label('Jenis')
+                    ->options([
+                        'Setoran' => 'Setoran',
+                        'Penarikan' => 'Penarikan',
+                    ]),
+            ])
             ->headerActions([])
             ->actions([])
             ->bulkActions([]);
     }
 
-    // --- Panel ringkasan breakdown di bawah tabel ---
-    // UPB (Uang Pecahan Besar) = 100rb + 50rb.
-    // UPK (Uang Pecahan Kecil) = 20rb ke bawah (kertas) + semua uang logam.
     public function getRingkasan(): array
     {
         $details = $this->getOwnerRecord()->details;
