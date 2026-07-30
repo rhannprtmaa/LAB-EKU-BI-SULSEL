@@ -20,17 +20,65 @@
                 ];
             @endphp
 
-            @foreach ($this->getStats() as $stat)
-                <div class="rounded-2xl p-4 {{ $colorMap[$stat['color']]['bg'] }} border border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm font-medium text-gray-600 dark:text-gray-300">{{ $stat['label'] }}</span>
-                        <x-dynamic-component :component="$stat['icon']" class="w-5 h-5 {{ $colorMap[$stat['color']]['text'] }}" />
-                    </div>
-                    <div class="text-2xl font-bold {{ $colorMap[$stat['color']]['text'] }}">
-                        {{ number_format($stat['value']) }}
-                    </div>
-                </div>
-            @endforeach
+                @php
+                $colorMap = [
+                    'green' => [
+                        0 => ['bg' => 'bg-green-50 dark:bg-green-950/40', 'text' => 'text-green-400 dark:text-green-600'],
+                        1 => ['bg' => 'bg-green-100 dark:bg-green-900/50', 'text' => 'text-green-600 dark:text-green-400'],
+                        2 => ['bg' => 'bg-green-200 dark:bg-green-800/60', 'text' => 'text-green-700 dark:text-green-300'],
+                        3 => ['bg' => 'bg-green-300 dark:bg-green-700/70', 'text' => 'text-green-800 dark:text-green-200'],
+                        4 => ['bg' => 'bg-green-500 dark:bg-green-600', 'text' => 'text-white dark:text-white'],
+                    ],
+                    'yellow' => [
+                        0 => ['bg' => 'bg-yellow-50 dark:bg-yellow-950/40', 'text' => 'text-yellow-500 dark:text-yellow-600'],
+                        1 => ['bg' => 'bg-yellow-100 dark:bg-yellow-900/50', 'text' => 'text-yellow-600 dark:text-yellow-400'],
+                        2 => ['bg' => 'bg-yellow-200 dark:bg-yellow-800/60', 'text' => 'text-yellow-700 dark:text-yellow-300'],
+                        3 => ['bg' => 'bg-yellow-300 dark:bg-yellow-700/70', 'text' => 'text-yellow-800 dark:text-yellow-200'],
+                        4 => ['bg' => 'bg-yellow-500 dark:bg-yellow-600', 'text' => 'text-white dark:text-white'],
+                    ],
+                    'red' => [
+                        0 => ['bg' => 'bg-red-50 dark:bg-red-950/40', 'text' => 'text-red-400 dark:text-red-600'],
+                        1 => ['bg' => 'bg-red-100 dark:bg-red-900/50', 'text' => 'text-red-600 dark:text-red-400'],
+                        2 => ['bg' => 'bg-red-200 dark:bg-red-800/60', 'text' => 'text-red-700 dark:text-red-300'],
+                        3 => ['bg' => 'bg-red-300 dark:bg-red-700/70', 'text' => 'text-red-800 dark:text-red-200'],
+                        4 => ['bg' => 'bg-red-500 dark:bg-red-600', 'text' => 'text-white dark:text-white'],
+                    ],
+                    'blue' => [
+                        0 => ['bg' => 'bg-indigo-50 dark:bg-indigo-950/40', 'text' => 'text-indigo-400 dark:text-indigo-600'],
+                        1 => ['bg' => 'bg-indigo-100 dark:bg-indigo-900/50', 'text' => 'text-indigo-600 dark:text-indigo-400'],
+                        2 => ['bg' => 'bg-indigo-200 dark:bg-indigo-800/60', 'text' => 'text-indigo-700 dark:text-indigo-300'],
+                        3 => ['bg' => 'bg-indigo-300 dark:bg-indigo-700/70', 'text' => 'text-indigo-800 dark:text-indigo-200'],
+                        4 => ['bg' => 'bg-indigo-500 dark:bg-indigo-600', 'text' => 'text-white dark:text-white'],
+                    ],
+                ];
+            @endphp
+
+@foreach ($this->getStats() as $stat)
+
+    @php
+        $tier = $stat['tier'] ?? 0;
+        $color = $stat['color'] ?? 'blue';
+        $warna = $colorMap[$color][$tier] ?? $colorMap['blue'][0];
+    @endphp
+
+    <div class="rounded-2xl p-4 {{ $warna['bg'] }} border border-black/5 shadow-sm hover:shadow-md transition-all duration-300">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium {{ $tier >= 4 ? 'text-white/80' : 'text-gray-600 dark:text-gray-300' }}">
+                {{ $stat['label'] }}
+            </span>
+
+            <x-dynamic-component
+                :component="$stat['icon']"
+                class="w-5 h-5 {{ $warna['text'] }}"
+            />
+        </div>
+
+        <div class="text-2xl font-bold {{ $warna['text'] }}">
+            {{ number_format($stat['value']) }}
+        </div>
+    </div>
+
+@endforeach
         </div>
         <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4 shrink-0">
             {{ $this->form }}
@@ -74,13 +122,13 @@
                                     <line x1="{{ $chart['paddingLeft'] }}" y1="{{ $line['y'] }}"
                                           x2="{{ $chart['width'] - 20 }}" y2="{{ $line['y'] }}"
                                           stroke="currentColor" class="text-gray-100 dark:text-gray-700" stroke-width="1" />
-                                    <text x="0" y="{{ $line['y'] + 4 }}" font-size="11" class="fill-gray-500 dark:fill-gray-400">{{ $line['value'] }}</text>
+                                    <text x="0" y="{{ $line['y'] + 4 }}" font-size="11" class="fill-gray-600 dark:fill-gray-300 font-medium">{{ $line['value'] }}</text>
                                 @endforeach
 
                                 {{-- Label bulan sumbu X --}}
                                 @foreach ($chart['labels'] as $lbl)
                                     <text x="{{ $lbl['x'] }}" y="{{ $chart['height'] - 8 }}" font-size="11"
-                                          text-anchor="middle" class="fill-gray-500 dark:fill-gray-400">{{ $lbl['label'] }}</text>
+                                          text-anchor="middle" class="fill-gray-600 dark:fill-gray-300 font-medium">{{ $lbl['label'] }}</text>
                                 @endforeach
 
                                 {{-- Garis Penarikan (merah), melengkung (smooth curve) --}}
@@ -130,7 +178,7 @@
 
                             {{-- Box overview info saat hover --}}
                             <div x-show="tip" x-cloak
-                                 class="pointer-events-none fixed z-50 rounded-lg bg-gray-900 dark:bg-gray-800 text-white text-xs px-3.5 py-2.5 shadow-lg min-w-[190px]"
+                              class="pointer-events-none fixed z-50 rounded-lg bg-blue-900 dark:bg-gray-800 border border-white/10 text-white text-xs px-3.5 py-2.5 shadow-xl min-w-[190px]"
                                  :style="`left: ${mx + 16}px; top: ${my + 16}px;`">
                                 <template x-if="tip">
                                     <div class="space-y-1.5">

@@ -107,34 +107,80 @@ class Dashboard extends BaseDashboard implements HasForms
         return $query;
     }
 
-    public function getStats(): array
-    {
-        $user = CurrentUser::get();
-        $base = $this->scopedTransactionsQuery();
+   public function getStats(): array
+{
+    $user = CurrentUser::get();
+    $base = $this->scopedTransactionsQuery();
 
-        $submitted = (clone $base)->count();
-        $doneReview = (clone $base)->where('status', EkuTransaction::STATUS_DISETUJUI)->count();
-        $notReview = (clone $base)->whereIn('status', [
+    $submitted = (clone $base)->count();
+
+    $doneReview = (clone $base)
+        ->where('status', EkuTransaction::STATUS_DISETUJUI)
+        ->count();
+
+    $notReview = (clone $base)
+        ->whereIn('status', [
             EkuTransaction::STATUS_MENUNGGU,
             EkuTransaction::STATUS_REVISI,
-        ])->count();
+        ])
+        ->count();
 
-        if ($user?->isUserPerbankan()) {
-            $fourthLabel = 'Perlu Revisi';
-            $fourthValue = (clone $base)->where('status', EkuTransaction::STATUS_REVISI)->count();
-        } else {
-            $fourthLabel = 'Total Users';
-            $fourthValue = User::count();
-        }
+    if ($user?->isUserPerbankan()) {
+        $fourthLabel = 'Perlu Revisi';
 
-        return [
-            ['label' => 'Submitted', 'value' => $submitted, 'color' => 'green', 'icon' => 'heroicon-o-paper-airplane'],
-            ['label' => 'Done Review', 'value' => $doneReview, 'color' => 'yellow', 'icon' => 'heroicon-o-tag'],
-            ['label' => 'Not Review', 'value' => $notReview, 'color' => 'red', 'icon' => 'heroicon-o-hand-thumb-up'],
-            ['label' => $fourthLabel, 'value' => $fourthValue, 'color' => 'blue', 'icon' => 'heroicon-o-users'],
-        ];
+        $fourthValue = (clone $base)
+            ->where('status', EkuTransaction::STATUS_REVISI)
+            ->count();
+    } else {
+        $fourthLabel = 'Total Users';
+        $fourthValue = User::count();
     }
 
+    return [
+        [
+            'label' => 'Submitted',
+            'value' => $submitted,
+            'color' => 'green',
+            'icon' => 'heroicon-o-paper-airplane',
+            'tier' => $this->intensityTier($submitted),
+        ],
+
+        [
+            'label' => 'Done Review',
+            'value' => $doneReview,
+            'color' => 'yellow',
+            'icon' => 'heroicon-o-tag',
+            'tier' => $this->intensityTier($doneReview),
+        ],
+
+        [
+            'label' => 'Not Review',
+            'value' => $notReview,
+            'color' => 'red',
+            'icon' => 'heroicon-o-hand-thumb-up',
+            'tier' => $this->intensityTier($notReview),
+        ],
+
+        [
+            'label' => $fourthLabel,
+            'value' => $fourthValue,
+            'color' => 'blue',
+            'icon' => 'heroicon-o-users',
+            'tier' => $this->intensityTier($fourthValue),
+        ],
+    ];
+}
+
+protected function intensityTier(int $value): int
+{
+    return match (true) {
+        $value <= 0 => 0,
+        $value < 5 => 1,
+        $value < 15 => 2,
+        $value < 30 => 3,
+        default => 4,
+    };
+}
     protected function forecastChartData(): array
     {
         $bulanUrut = $this->bulanUrut();
