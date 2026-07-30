@@ -67,27 +67,94 @@
                             <p class="text-sm max-w-sm mt-1">Grafik Forecast EKU hanya menampilkan data yang sudah divalidasi &amp; disetujui User BI.</p>
                         </div>
                     @else
-                        <svg viewBox="0 0 {{ $chart['width'] }} {{ $chart['height'] }}" class="w-full h-full" preserveAspectRatio="none">
-                            {{-- Grid horizontal + label sumbu Y --}}
-                            @foreach ($chart['gridLines'] as $line)
-                                <line x1="{{ $chart['paddingLeft'] }}" y1="{{ $line['y'] }}"
-                                      x2="{{ $chart['width'] - 20 }}" y2="{{ $line['y'] }}"
-                                      stroke="currentColor" class="text-gray-100 dark:text-gray-700" stroke-width="1" />
-                                <text x="0" y="{{ $line['y'] + 4 }}" font-size="11" class="fill-gray-400">{{ $line['value'] }}</text>
-                            @endforeach
+                        <div class="relative w-full h-full" x-data="{ tip: null, mx: 0, my: 0 }" @mousemove="mx = $event.clientX; my = $event.clientY">
+                            <svg viewBox="0 0 {{ $chart['width'] }} {{ $chart['height'] }}" class="w-full h-full" preserveAspectRatio="none">
+                                {{-- Grid horizontal + label sumbu Y --}}
+                                @foreach ($chart['gridLines'] as $line)
+                                    <line x1="{{ $chart['paddingLeft'] }}" y1="{{ $line['y'] }}"
+                                          x2="{{ $chart['width'] - 20 }}" y2="{{ $line['y'] }}"
+                                          stroke="currentColor" class="text-gray-100 dark:text-gray-700" stroke-width="1" />
+                                    <text x="0" y="{{ $line['y'] + 4 }}" font-size="11" class="fill-gray-500 dark:fill-gray-400">{{ $line['value'] }}</text>
+                                @endforeach
 
-                            {{-- Label bulan sumbu X --}}
-                            @foreach ($chart['labels'] as $lbl)
-                                <text x="{{ $lbl['x'] }}" y="{{ $chart['height'] - 8 }}" font-size="11"
-                                      text-anchor="middle" class="fill-gray-400">{{ $lbl['label'] }}</text>
-                            @endforeach
+                                {{-- Label bulan sumbu X --}}
+                                @foreach ($chart['labels'] as $lbl)
+                                    <text x="{{ $lbl['x'] }}" y="{{ $chart['height'] - 8 }}" font-size="11"
+                                          text-anchor="middle" class="fill-gray-500 dark:fill-gray-400">{{ $lbl['label'] }}</text>
+                                @endforeach
 
-                            {{-- Garis Penarikan (merah), melengkung (smooth curve) --}}
-                            <path d="{{ $chart['penarikanPath'] }}" fill="none" stroke="#fb7185" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                                {{-- Garis Penarikan (merah), melengkung (smooth curve) --}}
+                                <path d="{{ $chart['penarikanPath'] }}" fill="none" stroke="#fb7185" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
 
-                            {{-- Garis Setoran (hijau), melengkung (smooth curve) --}}
-                            <path d="{{ $chart['setoranPath'] }}" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
+                                {{-- Garis Setoran (hijau), melengkung (smooth curve) --}}
+                                <path d="{{ $chart['setoranPath'] }}" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+
+                                {{-- Titik data kecil di tiap bulan (selalu tampak) --}}
+                                @foreach ($chart['points'] as $p)
+                                    <circle cx="{{ $p['x'] }}" cy="{{ $p['ySetoran'] }}" r="3" fill="#10b981" />
+                                    <circle cx="{{ $p['x'] }}" cy="{{ $p['yPenarikan'] }}" r="3" fill="#fb7185" />
+                                @endforeach
+
+                                {{-- Garis panduan vertikal + titik yang membesar saat di-hover --}}
+                                @foreach ($chart['points'] as $i => $p)
+                                    <line x1="{{ $p['x'] }}" y1="{{ $chart['paddingTop'] }}"
+                                          x2="{{ $p['x'] }}" y2="{{ $chart['paddingTop'] + $chart['plotHeight'] }}"
+                                          stroke="currentColor" class="text-gray-300 dark:text-gray-600" stroke-width="1"
+                                          stroke-dasharray="4 3" x-show="tip && tip.i === {{ $i }}" x-cloak style="display:none" />
+                                    <circle cx="{{ $p['x'] }}" cy="{{ $p['ySetoran'] }}" r="6" fill="#10b981" stroke-width="1.5"
+                                            class="stroke-gray-900 dark:stroke-white"
+                                            x-show="tip && tip.i === {{ $i }}" x-cloak style="display:none" />
+                                    <circle cx="{{ $p['x'] }}" cy="{{ $p['yPenarikan'] }}" r="6" fill="#fb7185" stroke-width="1.5"
+                                            class="stroke-gray-900 dark:stroke-white"
+                                            x-show="tip && tip.i === {{ $i }}" x-cloak style="display:none" />
+                                @endforeach
+
+                                {{-- Area transparan per bulan untuk mendeteksi hover mendekati garis --}}
+                                @foreach ($chart['points'] as $i => $p)
+                                    <rect x="{{ $p['x'] - ($chart['stepX'] / 2) }}" y="{{ $chart['paddingTop'] }}"
+                                          width="{{ $chart['stepX'] > 0 ? $chart['stepX'] : $chart['width'] }}" height="{{ $chart['plotHeight'] }}"
+                                          fill="transparent" style="cursor: pointer;"
+                                          @mouseenter="mx = $event.clientX; my = $event.clientY; tip = {
+                                              i: {{ $i }},
+                                              bulan: @js($p['bulan']),
+                                              setoran: @js($p['setoranFmt']),
+                                              penarikan: @js($p['penarikanFmt']),
+                                              total: @js($p['totalFmt']),
+                                              persenSetoran: @js($p['persenSetoran']),
+                                              persenPenarikan: @js($p['persenPenarikan']),
+                                          }"
+                                          @mousemove="mx = $event.clientX; my = $event.clientY"
+                                          @mouseleave="tip = null" />
+                                @endforeach
+                            </svg>
+
+                            {{-- Box overview info saat hover --}}
+                            <div x-show="tip" x-cloak
+                                 class="pointer-events-none fixed z-50 rounded-lg bg-gray-900 dark:bg-gray-800 text-white text-xs px-3.5 py-2.5 shadow-lg min-w-[190px]"
+                                 :style="`left: ${mx + 16}px; top: ${my + 16}px;`">
+                                <template x-if="tip">
+                                    <div class="space-y-1.5">
+                                        <p class="font-semibold text-sm text-white" x-text="tip.bulan"></p>
+                                        <p class="flex items-center justify-between gap-3">
+                                            <span class="flex items-center gap-1.5 text-white/80">
+                                                <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span> Setoran (UPB)
+                                            </span>
+                                            <span class="font-medium" x-text="tip.setoran + ' (' + tip.persenSetoran + '%)'"></span>
+                                        </p>
+                                        <p class="flex items-center justify-between gap-3">
+                                            <span class="flex items-center gap-1.5 text-white/80">
+                                                <span class="w-2 h-2 rounded-full bg-rose-400 inline-block"></span> Penarikan (UPK)
+                                            </span>
+                                            <span class="font-medium" x-text="tip.penarikan + ' (' + tip.persenPenarikan + '%)'"></span>
+                                        </p>
+                                        <p class="flex items-center justify-between gap-3 pt-1.5 border-t border-white/10">
+                                            <span class="text-white/80">Total Nominal</span>
+                                            <span class="font-semibold" x-text="tip.total"></span>
+                                        </p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
                     @endif
                 @endif
             </div>

@@ -28,6 +28,7 @@ class ListEkuTransactions extends ListRecords
                 ->label('Buat Pengajuan Baru')
                 ->modalHeading('Buat Pengajuan EKU ')
                 ->modalWidth(Width::TwoExtraLarge)
+                ->visible(fn (): bool => EkuTransactionResource::canCreate())
                 ->mutateFormDataUsing(function (array $data): array {
                     $user = CurrentUser::get();
 

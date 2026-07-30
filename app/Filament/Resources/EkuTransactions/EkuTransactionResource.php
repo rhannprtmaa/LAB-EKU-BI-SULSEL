@@ -64,6 +64,10 @@ class EkuTransactionResource extends Resource
     {
         $user = CurrentUser::get();
 
+        if ($user?->isAdminBi()) {
+            return true;
+        }
+
         return $user?->isUserPerbankan()
             && $record->bank_id === $user->bank_id
             && $record->isEditableByBankOwner();
@@ -72,6 +76,10 @@ class EkuTransactionResource extends Resource
     public static function canDelete(Model $record): bool
     {
         $user = CurrentUser::get();
+
+        if ($user?->isAdminBi()) {
+            return true;
+        }
 
         return $user?->isUserPerbankan()
             && $record->bank_id === $user->bank_id
@@ -95,18 +103,16 @@ class EkuTransactionResource extends Resource
         ];
     }
 
-        public static function getPages(): array
-            {
-                return [
-                    'index' => ListEkuTransactions::route('/'),
-                    'view' => ViewEkuTransaction::route('/{record}'),
-                ];
-            }
+    public static function getPages(): array
+    {
+        return [
+            'index' => ListEkuTransactions::route('/'),
+            'view' => ViewEkuTransaction::route('/{record}'),
+        ];
+    }
 
     public static function infolist(Schema $schema): Schema
     {
         return EkuTransactionInfolist::configure($schema);
     }
-
-    
 }

@@ -249,20 +249,49 @@ class Dashboard extends BaseDashboard implements HasForms
             ];
         }
 
+        // Data per bulan untuk tooltip hover: nominal Setoran/Penarikan,
+        // persentase masing-masing terhadap total bulan itu, dan totalnya.
+        $bulanPenuh = $this->bulanUrut();
+        $points = [];
+        foreach ($data['labels'] as $i => $label) {
+            $setoranValue = $data['setoran'][$i] ?? 0.0;
+            $penarikanValue = $data['penarikan'][$i] ?? 0.0;
+            $total = $setoranValue + $penarikanValue;
+
+            $points[] = [
+                'x' => $setoranXY[$i][0] ?? round($paddingLeft + $i * $stepX, 1),
+                'ySetoran' => $setoranXY[$i][1] ?? ($paddingTop + $plotHeight),
+                'yPenarikan' => $penarikanXY[$i][1] ?? ($paddingTop + $plotHeight),
+                'bulan' => $bulanPenuh[$i] ?? $label,
+                'setoranFmt' => $this->formatRupiahPenuh($setoranValue),
+                'penarikanFmt' => $this->formatRupiahPenuh($penarikanValue),
+                'totalFmt' => $this->formatRupiahPenuh($total),
+                'persenSetoran' => $total > 0 ? round($setoranValue / $total * 100, 1) : 0,
+                'persenPenarikan' => $total > 0 ? round($penarikanValue / $total * 100, 1) : 0,
+            ];
+        }
+
         return [
             'width' => $width,
             'height' => $height,
             'paddingLeft' => $paddingLeft,
             'paddingTop' => $paddingTop,
             'plotHeight' => $plotHeight,
+            'stepX' => round($stepX, 1),
             'labels' => $labelPositions,
             'gridLines' => $gridLines,
+            'points' => $points,
             'setoranPath' => $toSmoothPath($setoranXY),
             'penarikanPath' => $toSmoothPath($penarikanXY),
             'setoranPoints' => $toPointsString($setoranXY),
             'penarikanPoints' => $toPointsString($penarikanXY),
             'hasData' => array_sum($data['setoran']) > 0 || array_sum($data['penarikan']) > 0,
         ];
+    }
+
+    protected function formatRupiahPenuh(float $value): string
+    {
+        return 'Rp ' . number_format($value, 0, ',', '.');
     }
 
     protected function formatRupiahSingkat(float $value): string
@@ -306,4 +335,3 @@ class Dashboard extends BaseDashboard implements HasForms
         return Bank::query()->orderBy('name')->pluck('name', 'id')->toArray();
     }
 }
- 

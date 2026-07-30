@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\EkuTransactions\Tables;
 
+use App\Filament\Resources\EkuTransactions\EkuTransactionResource;
 use App\Models\Bank;
 use App\Models\EkuTransaction;
 use App\Support\CurrentUser;
@@ -101,8 +102,10 @@ class EkuTransactionsTable
                 EditAction::make()
                     ->label('Edit')
                     ->modalHeading('Edit Pengajuan EKU')
-                    ->modalWidth(Width::TwoExtraLarge),
-                DeleteAction::make(),
+                    ->modalWidth(Width::TwoExtraLarge)
+                    ->visible(fn ($record) => EkuTransactionResource::canEdit($record)),
+                DeleteAction::make()
+                    ->visible(fn ($record) => EkuTransactionResource::canDelete($record)),
             ]);
     }
 }
