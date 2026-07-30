@@ -1,8 +1,13 @@
-<div class="fi-resource-relation-manager">
+{{-- Class "eku-details-wrapper" dipakai theme.css untuk menghilangkan border/
+     radius/shadow BAGIAN BAWAH tabel bawaan Filament, supaya panel ringkasan
+     di bawahnya bisa nyambung jadi SATU bentuk kotak yang sama (bukan 2 kotak
+     terpisah yang cuma ditempelkan). --}}
+<div class="fi-resource-relation-manager eku-details-wrapper">
     {{ $this->content }}
+
     @php($ringkasan = $this->getRingkasan())
 
-    <div class="-mt-4 rounded-b-2xl border border-t-0 border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40 px-5 py-4">
+    <div class="bg-white dark:bg-gray-900 border border-t-0 border-gray-100 dark:border-gray-800 rounded-b-2xl shadow-sm px-5 py-4">
         <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Ringkasan Total</p>
 
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">

@@ -94,10 +94,6 @@ html {
     color: rgba(255, 255, 255, 0.6);
 }
 
-/* ============================================================
-   AREA KONTEN UTAMA — putih bersih di light mode,
-   abu gelap elegan (bukan hitam pekat) di dark mode
-   ============================================================ */
 .fi-main,
 .fi-body {
     @apply bg-white dark:bg-gray-950;
@@ -120,4 +116,11 @@ html {
 
 .fi-badge {
     @apply rounded-full;
+}
+
+.eku-details-wrapper .fi-ta-ctn {
+    border-bottom: none;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    box-shadow: none;
 }
