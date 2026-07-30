@@ -306,3 +306,4 @@ class Dashboard extends BaseDashboard implements HasForms
         return Bank::query()->orderBy('name')->pluck('name', 'id')->toArray();
     }
 }
+ 

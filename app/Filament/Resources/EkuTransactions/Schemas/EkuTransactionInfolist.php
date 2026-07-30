@@ -88,15 +88,15 @@ class EkuTransactionInfolist
                             ->placeholder('Tidak ada catatan'),
                     ]),
 
-                Section::make('Perbandingan File: Asli vs Diterima BI')
-                    ->description('File sebelah kiri adalah yang pertama kali diunggah bank. File sebelah kanan adalah versi yang sudah dikoreksi & diterima User BI.')
+                Section::make('File Asli & Diterima Bank Indonesia')
+                    ->description('File sebelah kiri adalah original dan yang kanan yang di terima oleh Bank Indonesia')
                     ->columns(2)
                     ->visible(fn ($record) => $record->is_edited_by_bi)
                     ->schema([
-                        static::fileEntry('file_setoran_original', 'Setoran — File Asli (Awal Diajukan Bank)', 'gray', 'heroicon-o-document-text'),
-                        static::fileEntry('file_setoran', 'Setoran — File Diterima BI (Sudah Direvisi)', 'success', 'heroicon-o-document-check', 'file_setoran_nama_asli'),
-                        static::fileEntry('file_penarikan_original', 'Penarikan — File Asli (Awal Diajukan Bank)', 'gray', 'heroicon-o-document-text'),
-                        static::fileEntry('file_penarikan', 'Penarikan — File Diterima BI (Sudah Direvisi)', 'success', 'heroicon-o-document-check', 'file_penarikan_nama_asli'),
+                        static::fileEntry('file_setoran_original', 'EKUSetoran (File Asli)', 'gray', 'heroicon-o-document-text'),
+                        static::fileEntry('file_setoran', 'EKU Setoran (Diterima BI)', 'success', 'heroicon-o-document-check', 'file_setoran_nama_asli'),
+                        static::fileEntry('file_penarikan_original', 'EKU Penarikan (File Asli)', 'gray', 'heroicon-o-document-text'),
+                        static::fileEntry('file_penarikan', 'EKU Penarikan (Diterima BI)', 'success', 'heroicon-o-document-check', 'file_penarikan_nama_asli'),
                     ]),
 
                 Section::make('File Terlampir')
