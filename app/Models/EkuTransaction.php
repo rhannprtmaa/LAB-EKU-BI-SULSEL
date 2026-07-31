@@ -11,6 +11,7 @@ use App\Imports\EkuExcelImport;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Filament\Notifications\Notification;
+use App\Models\EkuDeadline;
 
 class EkuTransaction extends Model
 {
@@ -47,6 +48,18 @@ class EkuTransaction extends Model
             $transaction->file_penarikan_original ??= $transaction->file_penarikan;
             $transaction->file_lampiran_original ??= $transaction->file_lampiran;
             $transaction->status ??= self::STATUS_MENUNGGU;
+        });
+
+        static::saving(function ($transaction) {
+            // "Batasan Periode" sekarang ditentukan oleh Admin BI (lihat menu
+            // "Batas Waktu Pengajuan EKU"), bukan diketik manual oleh bank.
+            // Setiap kali record disimpan, isi otomatis dari pengaturan yang
+            // berlaku untuk periode yang dipilih.
+            $deadline = EkuDeadline::untukPeriode($transaction->periode);
+
+            $transaction->batasan_periode = $deadline?->batas_waktu
+                ? 'Batas Pengajuan s.d ' . $deadline->batas_waktu->locale('id')->translatedFormat('d F Y')
+                : null;
         });
 
         static::updating(function ($transaction) {
@@ -226,19 +239,6 @@ class EkuTransaction extends Model
         }
     }
 
-    /**
-     * Tulis ulang nilai-nilai di file Excel fisik (file_setoran / file_penarikan)
-     * supaya sesuai dengan data terbaru di database (misalnya setelah User BI
-     * mengedit angka lewat "Rincian Proyeksi EKU Bulanan"). Sebelumnya, edit di
-     * sistem hanya mengubah angka di database, sedangkan file yang bisa diunduh
-     * tetap berisi angka asli dari upload bank — makanya file "Diterima BI"
-     * kelihatannya tidak berubah walau di sistem sudah berubah.
-     *
-     * Cara kerjanya: buka ulang file yang sama, telusuri baris & kolom yang
-     * sama persis dengan yang dipakai saat membaca file (lihat reprocessExcelFiles()),
-     * lalu timpa nilainya saja. Format/template asli file (header, styling, dsb)
-     * tidak disentuh sama sekali.
-     */
     public function syncExcelValuesToFile(string $jenisFile): void
     {
         $fieldFile = $jenisFile === 'Setoran' ? 'file_setoran' : 'file_penarikan';
@@ -358,7 +358,13 @@ class EkuTransaction extends Model
 
     public function isEditableByBankOwner(): bool
     {
-        return in_array($this->status, [self::STATUS_MENUNGGU, self::STATUS_REVISI], true);
+        if (! in_array($this->status, [self::STATUS_MENUNGGU, self::STATUS_REVISI], true)) {
+            return false;
+        }
+
+        // Kalau periode ini sudah lewat batas waktu yang ditentukan Admin BI,
+        // bank tidak bisa lagi mengedit/mengunggah ulang file untuk periode itu.
+        return ! EkuDeadline::isTertutup($this->periode);
     }
 
     public function isLocked(): bool

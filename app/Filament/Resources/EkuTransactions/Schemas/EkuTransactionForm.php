@@ -2,23 +2,23 @@
 
 namespace App\Filament\Resources\EkuTransactions\Schemas;
 
+use App\Models\EkuDeadline;
 use App\Models\EkuTransaction;
+use App\Support\CurrentUser;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 
 class EkuTransactionForm
 {
-    /**
-     * Simpan file dengan nama asli yang diupload user (bukan kode/hash acak),
-     * tapi tetap diberi prefix waktu supaya tidak saling menimpa jika ada
-     * beberapa bank yang upload file dengan nama yang sama persis.
-     */
     protected static function namaFileAsli(): \Closure
     {
         return fn ($file) => date('YmdHis') . '_' . $file->getClientOriginalName();
@@ -37,19 +37,46 @@ class EkuTransactionForm
 
                 Select::make('periode')
                     ->label('Periode (Tahun)')
-                    ->options([
-                        date('Y') => date('Y'),
-                        date('Y') + 1 => date('Y') + 1,
-                        date('Y') + 2 => date('Y') + 2,
-                    ])
-                    ->default(date('Y') + 1)
-                    ->required(),
+                    ->live()
+                    ->options(fn () => collect([date('Y'), date('Y') + 1, date('Y') + 2])
+                        ->mapWithKeys(function ($tahun) {
+                            $label = EkuDeadline::isTertutup((string) $tahun)
+                                ? "{$tahun} (Ditutup)"
+                                : (string) $tahun;
 
-                TextInput::make('batasan_periode')
+                            return [(string) $tahun => $label];
+                        })
+                        ->all())
+                    ->disableOptionWhen(fn (string $value): bool => CurrentUser::get()?->isUserPerbankan()
+                        && EkuDeadline::isTertutup($value))
+                    ->default(date('Y') + 1)
+                    ->required()
+                    ->rule(function () {
+                        return function (string $attribute, $value, \Closure $fail) {
+                            if (CurrentUser::get()?->isUserPerbankan() && EkuDeadline::isTertutup($value)) {
+                                $fail('Periode ini sudah melewati batas waktu pengajuan EKU yang ditentukan oleh BI.');
+                            }
+                        };
+                    }),
+
+                Placeholder::make('batasan_periode_info')
                     ->label('Batasan Periode')
-                    ->placeholder('Contoh: Batas Pengajuan s.d 31 Desember')
-                    ->maxLength(255)
-                    ->columnSpanFull(),
+                    ->columnSpanFull()
+                    ->content(function (Get $get) {
+                        $deadline = EkuDeadline::untukPeriode($get('periode'));
+
+                        if (! $deadline || ! $deadline->batas_waktu) {
+                            return new HtmlString('<span class="text-gray-400">Belum ditentukan oleh BI untuk periode ini.</span>');
+                        }
+
+                        $tanggal = $deadline->batas_waktu->locale('id')->translatedFormat('d F Y');
+
+                        if ($deadline->isSudahLewat()) {
+                            return new HtmlString("<span class=\"text-danger-600 font-medium\">Batas Pengajuan s.d {$tanggal} — periode ini sudah ditutup.</span>");
+                        }
+
+                        return new HtmlString("Batas Pengajuan s.d <span class=\"font-medium\">{$tanggal}</span>");
+                    }),
 
                 FileUpload::make('file_setoran')
                     ->label('File Excel Setoran')
