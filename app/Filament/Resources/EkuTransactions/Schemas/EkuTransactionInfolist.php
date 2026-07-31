@@ -91,7 +91,8 @@ class EkuTransactionInfolist
                 Section::make('File Asli & Diterima Bank Indonesia')
                     ->description('File sebelah kiri adalah original dan yang kanan yang di terima oleh Bank Indonesia')
                     ->columns(2)
-                    ->visible(fn ($record) => $record->is_edited_by_bi)
+                    ->visible(fn ($record) => $record->is_edited_by_bi
+                        && $record->status === EkuTransaction::STATUS_DISETUJUI)
                     ->schema([
                         static::fileEntry('file_setoran_original', 'EKUSetoran (File Asli)', 'gray', 'heroicon-o-document-text'),
                         static::fileEntry('file_setoran', 'EKU Setoran (Diterima BI)', 'success', 'heroicon-o-document-check', 'file_setoran_nama_asli'),
@@ -101,7 +102,9 @@ class EkuTransactionInfolist
 
                 Section::make('File Terlampir')
                     ->columns(3)
-                    ->visible(fn ($record) => ! $record->is_edited_by_bi)
+                    ->visible(fn ($record) => ! (
+                        $record->is_edited_by_bi && $record->status === EkuTransaction::STATUS_DISETUJUI
+                    ))
                     ->schema([
                         static::fileEntry('file_setoran', 'File Setoran', 'info', 'heroicon-o-document-text', 'file_setoran_nama_asli'),
                         static::fileEntry('file_penarikan', 'File Penarikan', 'info', 'heroicon-o-document-text', 'file_penarikan_nama_asli'),
@@ -109,7 +112,8 @@ class EkuTransactionInfolist
                     ]),
 
                 Section::make('File Lampiran')
-                    ->visible(fn ($record) => $record->is_edited_by_bi)
+                    ->visible(fn ($record) => $record->is_edited_by_bi
+                        && $record->status === EkuTransaction::STATUS_DISETUJUI)
                     ->schema([
                         static::fileEntry('file_lampiran', 'File Lampiran', 'gray', 'heroicon-o-paper-clip', 'file_lampiran_nama_asli'),
                     ]),

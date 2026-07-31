@@ -226,6 +226,125 @@ class EkuTransaction extends Model
         }
     }
 
+    /**
+     * Tulis ulang nilai-nilai di file Excel fisik (file_setoran / file_penarikan)
+     * supaya sesuai dengan data terbaru di database (misalnya setelah User BI
+     * mengedit angka lewat "Rincian Proyeksi EKU Bulanan"). Sebelumnya, edit di
+     * sistem hanya mengubah angka di database, sedangkan file yang bisa diunduh
+     * tetap berisi angka asli dari upload bank — makanya file "Diterima BI"
+     * kelihatannya tidak berubah walau di sistem sudah berubah.
+     *
+     * Cara kerjanya: buka ulang file yang sama, telusuri baris & kolom yang
+     * sama persis dengan yang dipakai saat membaca file (lihat reprocessExcelFiles()),
+     * lalu timpa nilainya saja. Format/template asli file (header, styling, dsb)
+     * tidak disentuh sama sekali.
+     */
+    public function syncExcelValuesToFile(string $jenisFile): void
+    {
+        $fieldFile = $jenisFile === 'Setoran' ? 'file_setoran' : 'file_penarikan';
+        $fieldOriginal = $jenisFile === 'Setoran' ? 'file_setoran_original' : 'file_penarikan_original';
+
+        $filePath = $this->{$fieldFile};
+
+        if (! $filePath || ! Storage::disk('public')->exists($filePath)) {
+            return;
+        }
+
+        // File "Diterima BI" awalnya cuma alias (path yang sama persis) dengan
+        // file "Asli" dari bank. Kalau masih sama, duplikasi dulu jadi file
+        // fisik yang independen, supaya saat kita tulis ulang angkanya di
+        // bawah, file ASLI (before) tidak ikut tertimpa.
+        if ($this->{$fieldOriginal} === $filePath) {
+            $pathInfo = pathinfo($filePath);
+            $newPath = ($pathInfo['dirname'] !== '.' ? $pathInfo['dirname'] . '/' : '')
+                . $pathInfo['filename'] . '_diterima_bi.' . ($pathInfo['extension'] ?? 'xlsx');
+
+            Storage::disk('public')->copy($filePath, $newPath);
+
+            $this->{$fieldFile} = $newPath;
+            $this->saveQuietly();
+
+            $filePath = $newPath;
+        }
+
+        $fullPath = Storage::disk('public')->path($filePath);
+        $multiplier = 1000000;
+
+        $kolomBulan = [
+            3 => 'Januari', 4 => 'Februari', 5 => 'Maret', 6 => 'April',
+            7 => 'Mei', 8 => 'Juni', 9 => 'Juli', 10 => 'Agustus',
+            11 => 'September', 12 => 'Oktober', 13 => 'November', 14 => 'Desember',
+        ];
+
+        $petaKertas = [
+            100000 => 'kertas_100k', 50000 => 'kertas_50k', 20000 => 'kertas_20k',
+            10000 => 'kertas_10k', 5000 => 'kertas_5k', 2000 => 'kertas_2k', 1000 => 'kertas_1k',
+        ];
+        $petaLogam = [
+            1000 => 'logam_1k', 500 => 'logam_500', 200 => 'logam_200', 100 => 'logam_100',
+        ];
+
+        $details = $this->details()->where('jenis_file', $jenisFile)->get()->keyBy('bulan');
+
+        try {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($fullPath);
+            $sheet = $spreadsheet->getActiveSheet();
+            $highestRow = $sheet->getHighestRow();
+
+            $coord = fn (int $col, int $row) => \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col) . $row;
+
+            $section = null;
+
+            for ($row = 1; $row <= $highestRow; $row++) {
+                $jenisUang = strtoupper(trim((string) $sheet->getCell($coord(2, $row))->getValue()));
+                $nominalRaw = $sheet->getCell($coord(3, $row))->getValue();
+
+                if (str_contains($jenisUang, 'UANG KERTAS')) {
+                    $section = 'kertas';
+                } elseif (str_contains($jenisUang, 'UANG LOGAM')) {
+                    $section = 'logam';
+                }
+
+                if (str_contains($jenisUang, 'TOTAL')) {
+                    continue;
+                }
+                if (is_string($nominalRaw) && str_contains(strtoupper($nominalRaw), 'TOTAL')) {
+                    continue;
+                }
+
+                if (! is_numeric($nominalRaw) || ! $section) {
+                    continue;
+                }
+
+                $nominal = (int) $nominalRaw;
+                $namaKolom = $section === 'kertas'
+                    ? ($petaKertas[$nominal] ?? null)
+                    : ($petaLogam[$nominal] ?? null);
+
+                if (! $namaKolom) {
+                    continue;
+                }
+
+                foreach ($kolomBulan as $colIdx => $namaBulan) {
+                    $detail = $details->get($namaBulan);
+                    $nilaiBaru = $detail ? ((float) $detail->{$namaKolom}) / $multiplier : 0;
+
+                    $sheet->setCellValue($coord($colIdx + 1, $row), $nilaiBaru);
+                }
+            }
+
+            $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
+            $writer->save($fullPath);
+        } catch (\Throwable $e) {
+            Notification::make()
+                ->title('Gagal menyinkronkan file Excel')
+                ->body('Angka di sistem sudah tersimpan, tapi file Excel yang diunduh gagal diperbarui: ' . $e->getMessage())
+                ->danger()
+                ->persistent()
+                ->send();
+        }
+    }
+
     public function bank(): BelongsTo { return $this->belongsTo(Bank::class); }
     public function user(): BelongsTo { return $this->belongsTo(User::class, 'user_id'); }
     public function approver(): BelongsTo { return $this->belongsTo(User::class, 'approved_by'); }

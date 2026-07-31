@@ -152,6 +152,11 @@ class DetailsRelationManager extends RelationManager
                 EkuTransaction::whereKey($record->eku_transaction_id)->update([
                     'is_edited_by_bi' => true,
                 ]);
+
+                // Supaya file Excel yang bisa diunduh (After Acc) ikut memuat
+                // angka terbaru, bukan cuma angka di database.
+                EkuTransaction::find($record->eku_transaction_id)
+                    ?->syncExcelValuesToFile($record->jenis_file);
             });
     }
 }
