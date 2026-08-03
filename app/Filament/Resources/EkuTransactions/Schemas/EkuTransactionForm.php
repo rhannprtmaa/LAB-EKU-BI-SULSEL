@@ -59,9 +59,11 @@ class EkuTransactionForm
                         };
                     }),
 
+                // PERBAIKAN: Tambahkan ->dehydrated(false) agar tidak dimasukkan ke query SQL INSERT
                 Placeholder::make('batasan_periode_info')
                     ->label('Batasan Periode')
                     ->columnSpanFull()
+                    ->dehydrated(false)
                     ->content(function (Get $get) {
                         $deadline = EkuDeadline::untukPeriode($get('periode'));
 
@@ -131,7 +133,7 @@ class EkuTransactionForm
                             ->columnSpanFull(),
                     ]),
 
-                Hidden::make('bank_id')->default(fn () => Auth::user()->bank_id),
+                Hidden::make('bank_id')->default(fn () => Auth::user()?->bank_id),
                 Hidden::make('user_id')->default(fn () => Auth::id()),
             ]);
     }

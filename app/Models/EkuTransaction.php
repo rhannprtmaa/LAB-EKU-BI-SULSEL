@@ -41,7 +41,7 @@ class EkuTransaction extends Model
         ];
     }
 
-   protected static function booted()
+  protected static function booted()
     {
         static::creating(function ($transaction) {
             $transaction->file_setoran_original ??= $transaction->file_setoran;
@@ -51,11 +51,11 @@ class EkuTransaction extends Model
         });
 
         static::saving(function ($transaction) {
-            // "Batasan Periode" sekarang ditentukan oleh Admin BI (lihat menu
-            // "Batas Waktu Pengajuan EKU"), bukan diketik manual oleh bank.
-            // Setiap kali record disimpan, isi otomatis dari pengaturan yang
-            // berlaku untuk periode yang dipilih.
-            $deadline = EkuDeadline::untukPeriode($transaction->periode);
+            // "Batasan Periode" ditentukan oleh Admin BI lewat halaman
+            // "Management EKU" (bisa per-periode, atau satu batas waktu
+            // global untuk semua periode). Setiap kali record disimpan,
+            // isi otomatis dari pengaturan yang berlaku.
+            $deadline = EkuDeadline::untukPeriode($transaction->periode) ?? EkuDeadline::current();
 
             $transaction->batasan_periode = $deadline?->batas_waktu
                 ? 'Batas Pengajuan s.d ' . $deadline->batas_waktu->locale('id')->translatedFormat('d F Y')
@@ -75,10 +75,6 @@ class EkuTransaction extends Model
         });
 
         static::saved(function ($transaction) {
-            // Untuk record yang baru pertama kali dibuat (INSERT), Eloquent
-            // tidak mengisi wasChanged() sama sekali (itu cuma disinkronkan
-            // saat UPDATE oleh Laravel), jadi kita cek wasRecentlyCreated dulu
-            // supaya pengajuan baru langsung diproses tanpa perlu eku:reparse.
             if ($transaction->wasRecentlyCreated) {
                 $transaction->reprocessExcelFiles();
 

@@ -22,7 +22,7 @@ class EkuDeadlinesTable
                     ->weight('bold'),
 
                 TextColumn::make('batas_waktu')
-                    ->label('Batas Waktu Pengajuan')
+                    ->label('Batas Pengajuan')
                     ->date('d F Y')
                     ->sortable(),
 

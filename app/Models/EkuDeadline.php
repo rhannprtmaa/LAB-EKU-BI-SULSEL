@@ -24,19 +24,24 @@ class EkuDeadline extends Model
         return static::where('periode', $periode)->first();
     }
 
-    public static function isTertutup(?string $periode): bool
+    /**
+     * Periode dianggap TERTUTUP kalau:
+     * 1) Ada batas waktu yang spesifik diatur untuk periode ini dan sudah lewat, ATAU
+     * 2) Tidak ada yang spesifik, tapi ada batas waktu GLOBAL (dari halaman
+     *    "Management EKU" — tanpa memilih periode) yang sudah lewat.
+     * Kalau belum ada batas waktu sama sekali, dianggap masih terbuka.
+     */
+    public static function isTertutup(?string $periode = null): bool
     {
-        $deadline = static::untukPeriode($periode);
+        if ($periode) {
+            $spesifik = static::untukPeriode($periode);
 
-        if (! $deadline || ! $deadline->batas_waktu) {
-            return false;
+            if ($spesifik) {
+                return $spesifik->isSudahLewat();
+            }
         }
 
-        $tanggal = $deadline->batas_waktu instanceof Carbon
-            ? $deadline->batas_waktu
-            : Carbon::parse($deadline->batas_waktu);
-
-        return now()->startOfDay()->gt($tanggal->copy()->endOfDay());
+        return static::current()?->isSudahLewat() ?? false;
     }
 
     public function isSudahLewat(): bool
@@ -52,9 +57,15 @@ class EkuDeadline extends Model
         return now()->startOfDay()->gt($tanggal->copy()->endOfDay());
     }
 
+    /**
+     * Batas waktu GLOBAL terbaru (yang diatur lewat halaman "Management EKU"
+     * tanpa memilih periode tertentu). Sengaja hanya melihat record dengan
+     * periode kosong, supaya tidak bentrok kalau suatu saat ada juga batas
+     * waktu khusus per-periode.
+     */
     public static function current(): ?self
     {
-        return static::query()
+        return static::whereNull('periode')
             ->latest('id')
             ->first();
     }

@@ -23,7 +23,7 @@ class EkuDeadlineForm
                     ->native(false),
 
                 DatePicker::make('batas_waktu')
-                    ->label('Batas Waktu Pengajuan')
+                    ->label('Batas Pengajuan')
                     ->helperText('Setelah tanggal ini, User Perbankan tidak bisa lagi membuat/mengunggah pengajuan EKU untuk periode ini.')
                     ->native(false)
                     ->displayFormat('d F Y')

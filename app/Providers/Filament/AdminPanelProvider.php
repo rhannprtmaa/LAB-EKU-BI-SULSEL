@@ -21,8 +21,6 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Filament\Enums\ThemeMode;
 use Filament\FontProviders\GoogleFontProvider;
-use SebastianBergmann\Type\FalseType;
-use App\Filament\Pages\KelolaTemplateEku;
 
 class AdminPanelProvider extends PanelProvider
 {
