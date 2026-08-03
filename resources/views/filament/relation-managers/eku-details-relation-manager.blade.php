@@ -1,7 +1,3 @@
-{{-- Class "eku-details-wrapper" dipakai theme.css untuk menghilangkan border/
-     radius/shadow BAGIAN BAWAH tabel bawaan Filament, supaya panel ringkasan
-     di bawahnya bisa nyambung jadi SATU bentuk kotak yang sama (bukan 2 kotak
-     terpisah yang cuma ditempelkan). --}}
 <div class="fi-resource-relation-manager eku-details-wrapper">
     {{ $this->content }}
 

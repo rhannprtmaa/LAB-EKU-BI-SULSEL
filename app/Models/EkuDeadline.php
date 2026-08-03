@@ -3,17 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class EkuDeadline extends Model
 {
     protected $guarded = [];
 
-    protected function casts(): array
-    {
-        return [
-            'batas_waktu' => 'date',
-        ];
-    }
+    // Cast ke datetime agar menjadi instance Carbon
+    protected $casts = [
+        'batas_waktu' => 'datetime',
+        'deadline_at' => 'datetime',
+    ];
 
     public static function untukPeriode(?string $periode): ?self
     {
@@ -23,6 +23,7 @@ class EkuDeadline extends Model
 
         return static::where('periode', $periode)->first();
     }
+
     public static function isTertutup(?string $periode): bool
     {
         $deadline = static::untukPeriode($periode);
@@ -31,11 +32,30 @@ class EkuDeadline extends Model
             return false;
         }
 
-        return now()->startOfDay()->gt($deadline->batas_waktu->copy()->endOfDay());
+        $tanggal = $deadline->batas_waktu instanceof Carbon
+            ? $deadline->batas_waktu
+            : Carbon::parse($deadline->batas_waktu);
+
+        return now()->startOfDay()->gt($tanggal->copy()->endOfDay());
     }
 
     public function isSudahLewat(): bool
     {
-        return $this->batas_waktu ? now()->startOfDay()->gt($this->batas_waktu->copy()->endOfDay()) : false;
+        if (! $this->batas_waktu) {
+            return false;
+        }
+
+        $tanggal = $this->batas_waktu instanceof Carbon
+            ? $this->batas_waktu
+            : Carbon::parse($this->batas_waktu);
+
+        return now()->startOfDay()->gt($tanggal->copy()->endOfDay());
+    }
+
+    public static function current(): ?self
+    {
+        return static::query()
+            ->latest('id')
+            ->first();
     }
 }

@@ -16,6 +16,7 @@ use UnitEnum;
 
 class EkuDeadlineResource extends Resource
 {
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?string $model = EkuDeadline::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClock;
