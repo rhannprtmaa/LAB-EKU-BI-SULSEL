@@ -245,11 +245,6 @@ class EkuTransaction extends Model
         if (! $filePath || ! Storage::disk('public')->exists($filePath)) {
             return;
         }
-
-        // File "Diterima BI" awalnya cuma alias (path yang sama persis) dengan
-        // file "Asli" dari bank. Kalau masih sama, duplikasi dulu jadi file
-        // fisik yang independen, supaya saat kita tulis ulang angkanya di
-        // bawah, file ASLI (before) tidak ikut tertimpa.
         if ($this->{$fieldOriginal} === $filePath) {
             $pathInfo = pathinfo($filePath);
             $newPath = ($pathInfo['dirname'] !== '.' ? $pathInfo['dirname'] . '/' : '')
@@ -357,14 +352,31 @@ class EkuTransaction extends Model
         if (! in_array($this->status, [self::STATUS_MENUNGGU, self::STATUS_REVISI], true)) {
             return false;
         }
-
-        // Kalau periode ini sudah lewat batas waktu yang ditentukan Admin BI,
-        // bank tidak bisa lagi mengedit/mengunggah ulang file untuk periode itu.
         return ! EkuDeadline::isTertutup($this->periode);
     }
 
     public function isLocked(): bool
     {
         return $this->status === self::STATUS_DISETUJUI;
+    }
+
+    // Perhitungan Deviasi Otomatis
+    public function hitungDeviasi(): void
+    {
+        $this->deviasi_setoran = $this->total_realisasi_setoran - $this->total_setoran;
+        $this->deviasi_penarikan = $this->total_realisasi_penarikan - $this->total_penarikan;
+        $this->save();
+    }
+
+    public function getPersentaseDeviasiSetoranAttribute(): float
+    {
+        if ($this->total_setoran == 0) return 0;
+        return round(($this->deviasi_setoran / $this->total_setoran) * 100, 2);
+    }
+
+    public function getPersentaseDeviasiPenarikanAttribute(): float
+    {
+        if ($this->total_penarikan == 0) return 0;
+        return round(($this->deviasi_penarikan / $this->total_penarikan) * 100, 2);
     }
 }

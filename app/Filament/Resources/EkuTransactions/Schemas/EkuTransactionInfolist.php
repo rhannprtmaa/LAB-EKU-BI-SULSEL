@@ -10,9 +10,6 @@ use Illuminate\Support\Facades\Storage;
 
 class EkuTransactionInfolist
 {
-    // Semua entry file dibikin lewat helper ini biar KONSISTEN ukurannya
-    // (limit panjang nama file yang sama, badge, icon, warna) — tidak lagi
-    // beda-beda ukuran tergantung panjang nama file aslinya.
     protected static function fileEntry(
         string $namaKolom,
         string $label,
@@ -116,6 +113,32 @@ class EkuTransactionInfolist
                         && $record->status === EkuTransaction::STATUS_DISETUJUI)
                     ->schema([
                         static::fileEntry('file_lampiran', 'File Lampiran', 'gray', 'heroicon-o-paper-clip', 'file_lampiran_nama_asli'),
+                    ]),
+
+                Section::make('Ringkasan Realisasi & Deviasi EKU')
+                    ->columns(3)
+                    ->schema([
+                        TextEntry::make('total_setoran')
+                            ->label('Pengajuan Setoran')
+                            ->money('IDR'),
+                        TextEntry::make('total_realisasi_setoran')
+                            ->label('Realisasi Setoran')
+                            ->money('IDR'),
+                        TextEntry::make('deviasi_setoran')
+                            ->label('Deviasi Setoran')
+                            ->money('IDR')
+                            ->color(fn ($state) => $state < 0 ? 'danger' : 'success'),
+
+                        TextEntry::make('total_penarikan')
+                            ->label('Pengajuan Penarikan')
+                            ->money('IDR'),
+                        TextEntry::make('total_realisasi_penarikan')
+                            ->label('Realisasi Penarikan')
+                            ->money('IDR'),
+                        TextEntry::make('deviasi_penarikan')
+                            ->label('Deviasi Penarikan')
+                            ->money('IDR')
+                            ->color(fn ($state) => $state < 0 ? 'danger' : 'success'),
                     ]),
             ]);
     }
