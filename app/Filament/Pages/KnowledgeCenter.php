@@ -13,7 +13,7 @@ class KnowledgeCenter extends Page
     protected static ?string $navigationLabel = 'Knowledge Center';
     protected static ?int $navigationSort = 3;
 
-    protected static string $view = 'filament.pages.knowledge-center';
+    protected string $view = 'filament.pages.knowledge-center';
 
     public string $search = '';
     public ?string $selectedKategori = null;

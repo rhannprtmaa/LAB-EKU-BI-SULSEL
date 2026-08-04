@@ -27,7 +27,40 @@
             </div>
         </div>
 
-        {{-- 2. GRID KATEGORI --}}
+        {{-- 2. BERITA UTAMA (FEATURED) --}}
+        @if($featuredPosts->isNotEmpty())
+            <div>
+                <div class="flex items-center gap-2 mb-4">
+                    <x-heroicon-s-star class="w-4 h-4 text-amber-500" />
+                    <h2 class="text-md font-bold text-gray-900 dark:text-white">Berita Utama</h2>
+                </div>
+                <div class="grid grid-cols-1 {{ $featuredPosts->count() > 1 ? 'md:grid-cols-2' : '' }} {{ $featuredPosts->count() > 2 ? 'lg:grid-cols-3' : '' }} gap-6">
+                    @foreach($featuredPosts as $post)
+                        <div
+                            wire:click="showPost({{ $post->id }})"
+                            class="group cursor-pointer relative overflow-hidden rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 min-h-[220px] flex items-end bg-gray-900"
+                        >
+                            @if($post->gambar_sampul)
+                                <img src="{{ asset('storage/' . $post->gambar_sampul) }}"
+                                     class="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:scale-105 group-hover:opacity-60 transition-all duration-300">
+                            @endif
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
+
+                            <div class="relative z-10 p-5 space-y-2 w-full">
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-0.5 bg-amber-500 text-white rounded text-[10px] font-bold uppercase tracking-wide">Utama</span>
+                                    <span class="px-2 py-0.5 bg-white/20 backdrop-blur text-white rounded text-[10px] font-medium">{{ $post->kategori }}</span>
+                                </div>
+                                <h3 class="font-bold text-white text-base leading-snug line-clamp-2">{{ $post->judul }}</h3>
+                                <p class="text-[11px] text-white/70">{{ $post->created_at->diffForHumans() }}</p>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        {{-- 3. GRID KATEGORI --}}
         <div>
             <h2 class="text-md font-bold text-gray-900 dark:text-white mb-4">Pilih Berdasarkan Kategori</h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -52,7 +85,7 @@
             </div>
         </div>
 
-        {{-- 3. DAFTAR ARTIKEL & NEWS --}}
+        {{-- 4. DAFTAR ARTIKEL & NEWS --}}
         <div class="space-y-4">
             <div class="flex items-center justify-between">
                 <h2 class="text-md font-bold text-gray-900 dark:text-white">
@@ -107,7 +140,7 @@
             </div>
         </div>
 
-        {{-- 4. MODAL BACA ARTIKEL LENGKAP --}}
+        {{-- 5. MODAL BACA ARTIKEL LENGKAP --}}
         @if($activePost)
             <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                 <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8 space-y-6 shadow-2xl relative">
@@ -141,7 +174,7 @@
                                     <p class="text-[10px] text-gray-400">{{ basename($activePost->file_lampiran) }}</p>
                                 </div>
                             </div>
-                            <a
+
                                 href="{{ asset('storage/' . $activePost->file_lampiran) }}"
                                 target="_blank"
                                 class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium flex items-center space-x-1"

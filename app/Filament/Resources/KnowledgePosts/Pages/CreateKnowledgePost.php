@@ -6,7 +6,7 @@ use App\Filament\Resources\KnowledgePosts\KnowledgePostResource;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
 
-class CreateKnowledgePosts extends CreateRecord
+class CreateKnowledgePost extends CreateRecord
 {
     protected static string $resource = KnowledgePostResource::class;
 

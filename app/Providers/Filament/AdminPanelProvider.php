@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\KnowledgeCenter;
 use App\Filament\Pages\ManagementEku;
 use App\Filament\Resources\EkuTransactions\EkuTransactionResource;
 use Filament\Http\Middleware\Authenticate;
@@ -55,6 +56,7 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 Dashboard::class,
                 ManagementEku::class,
+                KnowledgeCenter::class,
             ])
 
             // --- Middleware Configuration ---

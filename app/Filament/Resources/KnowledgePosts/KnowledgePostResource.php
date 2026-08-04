@@ -4,6 +4,7 @@ namespace App\Filament\Resources\KnowledgePosts;
 
 use App\Filament\Resources\KnowledgePosts\Pages;
 use App\Models\KnowledgePost;
+use App\Support\CurrentUser;
 use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -19,6 +20,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class KnowledgePostResource extends Resource
@@ -29,6 +31,34 @@ class KnowledgePostResource extends Resource
     protected static ?string $navigationLabel = 'Kelola Knowledge Center';
     protected static ?string $modelLabel = 'Materi Knowledge Center';
     protected static ?int $navigationSort = 4;
+
+    // Hanya Admin BI yang boleh mengelola (buat/edit/hapus) materi Knowledge
+    // Center. User BI dan User Perbankan hanya menerima/melihatnya lewat
+    // halaman "Knowledge Center" (App\Filament\Pages\KnowledgeCenter).
+    public static function canViewAny(): bool
+    {
+        return CurrentUser::get()?->isAdminBi() ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return CurrentUser::get()?->isAdminBi() ?? false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return CurrentUser::get()?->isAdminBi() ?? false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return CurrentUser::get()?->isAdminBi() ?? false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return CurrentUser::get()?->isAdminBi() ?? false;
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -105,8 +135,8 @@ class KnowledgePostResource extends Resource
     {
         return [
             'index' => Pages\ListKnowledgePosts::route('/'),
-            'create' => Pages\CreateKnowledgePosts::route('/create'),
-            'edit' => Pages\EditKnowledgePosts::route('/{record}/edit'),
+            'create' => Pages\CreateKnowledgePost::route('/create'),
+            'edit' => Pages\EditKnowledgePost::route('/{record}/edit'),
         ];
     }
 }
