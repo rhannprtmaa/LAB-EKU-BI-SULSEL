@@ -141,4 +141,5 @@ class RealisasiEkuResource extends Resource
             'index' => Pages\ListRealisasiEkus::route('/'),
         ];
     }
+
 }

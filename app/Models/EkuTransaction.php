@@ -464,4 +464,9 @@ class EkuTransaction extends Model
         $this->realisasi_uploaded_at = now();
         $this->save();
     }
+
+    public function realisasiHistories()
+{
+    return $this->hasMany(EkuRealisasiHistory::class, 'eku_transaction_id');
+}
 }
