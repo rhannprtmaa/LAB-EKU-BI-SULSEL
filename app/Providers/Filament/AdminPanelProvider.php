@@ -7,6 +7,7 @@ use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\KnowledgeCenter;
 use App\Filament\Pages\ManagementEku;
 use App\Filament\Resources\EkuTransactions\EkuTransactionResource;
+use App\Filament\Resources\RealisasiEkuResource; // <--- PASTIKAN INI DI-IMPORT
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -40,8 +41,6 @@ class AdminPanelProvider extends PanelProvider
             // --- Tampilan Panel ---
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->brandName('LAB EKU SULSEL')
-
-            ->brandName('LAB EKU SULSEL')
             ->brandLogo(fn () => view('filament.admin.logo'))
             ->colors([
                 'primary' => Color::Hex('#054177'),
@@ -52,6 +51,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->resources([
                 EkuTransactionResource::class,
+                RealisasiEkuResource::class, // <--- DAFTARKAN DI SINI AGAR MUNCUL DI SIDEBAR
             ])
             ->pages([
                 Dashboard::class,

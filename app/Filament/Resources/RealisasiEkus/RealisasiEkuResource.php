@@ -23,10 +23,18 @@ class RealisasiEkuResource extends Resource
     protected static ?string $modelLabel = 'Realisasi EKU';
     protected static ?int $navigationSort = 2;
 
+    // Mengatur agar hanya User BI dan Admin BI yang bisa melihat menu ini di sidebar
+    public static function canViewAny(): bool
+    {
+        $user = CurrentUser::get();
+        return (bool) ($user?->isAdminBi() || $user?->isUserBi());
+    }
+
     public static function table(Table $table): Table
     {
         $user = CurrentUser::get();
-        $isInternalBi = (bool) ($user?->isAdminBi() || $user?->isUserBi());
+        // Hanya User BI murni yang bisa menginput realisasi, Admin BI hanya monitoring
+        $isUserBiOnly = (bool) $user?->isUserBi();
 
         return $table
             ->query(
@@ -36,8 +44,7 @@ class RealisasiEkuResource extends Resource
                 TextColumn::make('bank.name')
                     ->label('Nama Bank')
                     ->searchable()
-                    ->sortable()
-                    ->visible($isInternalBi),
+                    ->sortable(),
 
                 TextColumn::make('periode')
                     ->label('Periode')
@@ -49,11 +56,13 @@ class RealisasiEkuResource extends Resource
 
                 TextColumn::make('total_realisasi_setoran')
                     ->label('Realisasi Setoran')
-                    ->numeric(0, ',', '.'),
+                    ->numeric(0, ',', '.')
+                    ->placeholder('Belum ada'),
 
                 TextColumn::make('deviasi_setoran')
                     ->label('Deviasi Setoran')
                     ->numeric(0, ',', '.')
+                    ->placeholder('-')
                     ->color(fn ($state) => $state < 0 ? 'danger' : ($state > 0 ? 'success' : 'gray')),
 
                 TextColumn::make('total_penarikan')
@@ -62,11 +71,13 @@ class RealisasiEkuResource extends Resource
 
                 TextColumn::make('total_realisasi_penarikan')
                     ->label('Realisasi Penarikan')
-                    ->numeric(0, ',', '.'),
+                    ->numeric(0, ',', '.')
+                    ->placeholder('Belum ada'),
 
                 TextColumn::make('deviasi_penarikan')
                     ->label('Deviasi Penarikan')
                     ->numeric(0, ',', '.')
+                    ->placeholder('-')
                     ->color(fn ($state) => $state < 0 ? 'danger' : ($state > 0 ? 'success' : 'gray')),
 
                 TextColumn::make('realisasi_uploaded_at')
@@ -77,11 +88,12 @@ class RealisasiEkuResource extends Resource
             ->actions([
                 ViewAction::make()->label('Detail'),
 
+                // Tombol Input Realisasi HANYA MUNCUL untuk User BI (Admin BI tidak ada tombol ini)
                 Action::make('uploadRealisasi')
                     ->label('Input Realisasi')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->color('success')
-                    ->visible($isInternalBi)
+                    ->visible($isUserBiOnly)
                     ->form([
                         FileUpload::make('file_realisasi_setoran')
                             ->label('File Excel Realisasi Setoran')
@@ -104,6 +116,12 @@ class RealisasiEkuResource extends Resource
                             ->required(),
                     ])
                     ->action(function ($record, array $data) {
+                        $record->update([
+                            'file_realisasi_setoran' => $data['file_realisasi_setoran'],
+                            'file_realisasi_penarikan' => $data['file_realisasi_penarikan'],
+                        ]);
+
+                        // Proses baca excel realisasi & hitung deviasi
                         $record->processRealisasiExcel(
                             $data['file_realisasi_setoran'],
                             $data['file_realisasi_penarikan']
