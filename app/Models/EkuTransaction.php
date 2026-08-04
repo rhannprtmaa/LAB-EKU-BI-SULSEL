@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Filament\Notifications\Notification;
 use App\Models\EkuDeadline;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class EkuTransaction extends Model
 {
@@ -379,4 +380,89 @@ class EkuTransaction extends Model
         if ($this->total_penarikan == 0) return 0;
         return round(($this->deviasi_penarikan / $this->total_penarikan) * 100, 2);
     }
+
+    public function processRealisasiExcel(string $setoranPath, string $penarikanPath): void
+{
+    $fullSetoranPath = storage_path('app/public/' . $setoranPath);
+    $fullPenarikanPath = storage_path('app/public/' . $penarikanPath);
+
+    $totalRealisasiSetoran = 0;
+    $totalRealisasiPenarikan = 0;
+
+    // Helper sederhana pembersih format angka/nominal
+    $parseMoney = function ($value) {
+        if (is_null($value) || $value === '') return 0;
+        if (is_numeric($value)) return (float) $value;
+        $cleaned = preg_replace('/[^\d]/', '', (string) $value);
+        return (float) $cleaned;
+    };
+
+    // 1. Parsing File Realisasi Setoran
+    if (file_exists($fullSetoranPath)) {
+        $spreadsheet = IOFactory::load($fullSetoranPath);
+        $sheet = $spreadsheet->getActiveSheet();
+        $data = $sheet->toArray(null, true, true, true);
+
+        foreach ($data as $rowIndex => $row) {
+            if ($rowIndex < 3) continue; // Skip header Excel
+
+            $bulan = trim($row['A'] ?? '');
+            $pecahan = trim($row['B'] ?? '');
+            $nominal = $parseMoney($row['C'] ?? 0);
+
+            if (empty($bulan) || empty($pecahan)) continue;
+
+            $detail = EkuTransactionDetail::where('eku_transaction_id', $this->id)
+                ->where('bulan', $bulan)
+                ->where('pecahan', $pecahan)
+                ->first();
+
+            if ($detail) {
+                $detail->realisasi_setoran = $nominal;
+                $detail->deviasi_setoran = $nominal - $detail->setoran;
+                $detail->save();
+            }
+
+            $totalRealisasiSetoran += $nominal;
+        }
+    }
+
+    // 2. Parsing File Realisasi Penarikan
+    if (file_exists($fullPenarikanPath)) {
+        $spreadsheet = IOFactory::load($fullPenarikanPath);
+        $sheet = $spreadsheet->getActiveSheet();
+        $data = $sheet->toArray(null, true, true, true);
+
+        foreach ($data as $rowIndex => $row) {
+            if ($rowIndex < 3) continue; // Skip header Excel
+
+            $bulan = trim($row['A'] ?? '');
+            $pecahan = trim($row['B'] ?? '');
+            $nominal = $parseMoney($row['C'] ?? 0);
+
+            if (empty($bulan) || empty($pecahan)) continue;
+
+            $detail = EkuTransactionDetail::where('eku_transaction_id', $this->id)
+                ->where('bulan', $bulan)
+                ->where('pecahan', $pecahan)
+                ->first();
+
+            if ($detail) {
+                $detail->realisasi_penarikan = $nominal;
+                $detail->deviasi_penarikan = $nominal - $detail->penarikan;
+                $detail->save();
+            }
+
+            $totalRealisasiPenarikan += $nominal;
+        }
+    }
+
+    // 3. Simpan Total Realisasi & Deviasi ke Transaksi Utama
+    $this->total_realisasi_setoran = $totalRealisasiSetoran;
+    $this->total_realisasi_penarikan = $totalRealisasiPenarikan;
+    $this->deviasi_setoran = $totalRealisasiSetoran - $this->total_setoran;
+    $this->deviasi_penarikan = $totalRealisasiPenarikan - $this->total_penarikan;
+    $this->realisasi_uploaded_at = now();
+    $this->save();
+}
 }
