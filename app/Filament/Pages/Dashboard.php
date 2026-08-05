@@ -13,6 +13,7 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
+use App\Filament\Resources\RealisasiEkus\Widgets\RealisasiUpbUpkPieChart;
 
 class Dashboard extends BaseDashboard implements HasForms
 {
@@ -107,80 +108,81 @@ class Dashboard extends BaseDashboard implements HasForms
         return $query;
     }
 
-   public function getStats(): array
-{
-    $user = CurrentUser::get();
-    $base = $this->scopedTransactionsQuery();
+    public function getStats(): array
+    {
+        $user = CurrentUser::get();
+        $base = $this->scopedTransactionsQuery();
 
-    $submitted = (clone $base)->count();
+        $submitted = (clone $base)->count();
 
-    $doneReview = (clone $base)
-        ->where('status', EkuTransaction::STATUS_DISETUJUI)
-        ->count();
-
-    $notReview = (clone $base)
-        ->whereIn('status', [
-            EkuTransaction::STATUS_MENUNGGU,
-            EkuTransaction::STATUS_REVISI,
-        ])
-        ->count();
-
-    if ($user?->isUserPerbankan()) {
-        $fourthLabel = 'Perlu Revisi';
-
-        $fourthValue = (clone $base)
-            ->where('status', EkuTransaction::STATUS_REVISI)
+        $doneReview = (clone $base)
+            ->where('status', EkuTransaction::STATUS_DISETUJUI)
             ->count();
-    } else {
-        $fourthLabel = 'Total Users';
-        $fourthValue = User::count();
+
+        $notReview = (clone $base)
+            ->whereIn('status', [
+                EkuTransaction::STATUS_MENUNGGU,
+                EkuTransaction::STATUS_REVISI,
+            ])
+            ->count();
+
+        if ($user?->isUserPerbankan()) {
+            $fourthLabel = 'Perlu Revisi';
+
+            $fourthValue = (clone $base)
+                ->where('status', EkuTransaction::STATUS_REVISI)
+                ->count();
+        } else {
+            $fourthLabel = 'Total Users';
+            $fourthValue = User::count();
+        }
+
+        return [
+            [
+                'label' => 'Submitted',
+                'value' => $submitted,
+                'color' => 'green',
+                'icon' => 'heroicon-o-paper-airplane',
+                'tier' => $this->intensityTier($submitted),
+            ],
+
+            [
+                'label' => 'Done Review',
+                'value' => $doneReview,
+                'color' => 'yellow',
+                'icon' => 'heroicon-o-tag',
+                'tier' => $this->intensityTier($doneReview),
+            ],
+
+            [
+                'label' => 'Not Review',
+                'value' => $notReview,
+                'color' => 'red',
+                'icon' => 'heroicon-o-hand-thumb-up',
+                'tier' => $this->intensityTier($notReview),
+            ],
+
+            [
+                'label' => $fourthLabel,
+                'value' => $fourthValue,
+                'color' => 'blue',
+                'icon' => 'heroicon-o-users',
+                'tier' => $this->intensityTier($fourthValue),
+            ],
+        ];
     }
 
-    return [
-        [
-            'label' => 'Submitted',
-            'value' => $submitted,
-            'color' => 'green',
-            'icon' => 'heroicon-o-paper-airplane',
-            'tier' => $this->intensityTier($submitted),
-        ],
+    protected function intensityTier(int $value): int
+    {
+        return match (true) {
+            $value <= 0 => 0,
+            $value < 5 => 1,
+            $value < 15 => 2,
+            $value < 30 => 3,
+            default => 4,
+        };
+    }
 
-        [
-            'label' => 'Done Review',
-            'value' => $doneReview,
-            'color' => 'yellow',
-            'icon' => 'heroicon-o-tag',
-            'tier' => $this->intensityTier($doneReview),
-        ],
-
-        [
-            'label' => 'Not Review',
-            'value' => $notReview,
-            'color' => 'red',
-            'icon' => 'heroicon-o-hand-thumb-up',
-            'tier' => $this->intensityTier($notReview),
-        ],
-
-        [
-            'label' => $fourthLabel,
-            'value' => $fourthValue,
-            'color' => 'blue',
-            'icon' => 'heroicon-o-users',
-            'tier' => $this->intensityTier($fourthValue),
-        ],
-    ];
-}
-
-protected function intensityTier(int $value): int
-{
-    return match (true) {
-        $value <= 0 => 0,
-        $value < 5 => 1,
-        $value < 15 => 2,
-        $value < 30 => 3,
-        default => 4,
-    };
-}
     protected function forecastChartData(): array
     {
         $bulanUrut = $this->bulanUrut();
@@ -295,8 +297,6 @@ protected function intensityTier(int $value): int
             ];
         }
 
-        // Data per bulan untuk tooltip hover: nominal Setoran/Penarikan,
-        // persentase masing-masing terhadap total bulan itu, dan totalnya.
         $bulanPenuh = $this->bulanUrut();
         $points = [];
         foreach ($data['labels'] as $i => $label) {
@@ -379,5 +379,12 @@ protected function intensityTier(int $value): int
     public function availableBanks(): array
     {
         return Bank::query()->orderBy('name')->pluck('name', 'id')->toArray();
+    }
+
+    public function getWidgets(): array
+    {
+        return [
+            RealisasiUpbUpkPieChart::class,
+        ];
     }
 }

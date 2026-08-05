@@ -14,8 +14,6 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-
-// --- PASTIKAN IMPORT ACTION MENGGUNAKAN "Filament\Tables\Actions" ---
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
@@ -115,6 +113,7 @@ class RealisasiEkuResource extends Resource
                     ->label('Input Realisasi')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->color('success')
+                    ->visible(fn (EkuTransaction $record) => (bool) CurrentUser::get()?->isUserBi())    
                     ->form([
                         FileUpload::make('file_setoran')
                             ->label('Upload File Excel Realisasi Setoran')
