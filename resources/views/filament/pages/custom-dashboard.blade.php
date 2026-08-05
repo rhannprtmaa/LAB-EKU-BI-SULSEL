@@ -87,16 +87,26 @@
             <div class="flex items-center justify-between mb-3 shrink-0">
                 <h3 class="font-semibold text-gray-800 dark:text-white">Grafik</h3>
 
-                @if ($this->data['jenisGrafik'] === 'forecast_eku')
+               @if ($this->data['jenisGrafik'] === 'forecast_eku')
                     <div class="flex items-center gap-4 text-sm">
                         <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Setoran</span>
                         <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span> Penarikan</span>
+                    </div>
+                @elseif ($this->data['jenisGrafik'] === 'realisasi_eku')
+                    <div class="flex items-center gap-4 text-sm">
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Realisasi Setoran</span>
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span> Realisasi Penarikan</span>
+                    </div>
+                @elseif ($this->data['jenisGrafik'] === 'deviasi_forecast')
+                    <div class="flex items-center gap-4 text-sm">
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background-color:#f59e0b"></span> Under-Realisasi</span>
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background-color:#3b82f6"></span> Over-Realisasi</span>
                     </div>
                 @endif
             </div>
 
             <div class="flex-1 min-h-0 flex items-center justify-center">
-                @if ($this->data['jenisGrafik'] !== 'forecast_eku')
+                @if ($this->data['jenisGrafik'] === 'tukab')
 
                     <div class="flex flex-col items-center justify-center text-center text-gray-400">
                         <x-heroicon-o-chart-bar class="w-10 h-10 mb-3" />
@@ -105,6 +115,85 @@
                             Fitur input data untuk grafik ini masih dalam tahap pengembangan pada fase berikutnya.
                         </p>
                     </div>
+                @elseif (in_array($this->data['jenisGrafik'], ['realisasi_eku', 'deviasi_forecast']))
+                    @php($pie = $this->data['jenisGrafik'] === 'realisasi_eku' ? $this->realisasiPieData() : $this->deviasiPieData())
+
+                    @if (! $pie['hasData'])
+                        <div class="flex flex-col items-center justify-center text-center text-gray-400">
+                            <x-heroicon-o-inbox class="w-10 h-10 mb-3" />
+                            <p class="font-medium">
+                                @if ($this->data['jenisGrafik'] === 'realisasi_eku')
+                                    Belum ada data <span class="font-semibold text-gray-500">Realisasi</span> yang diinput pada periode ini
+                                @else
+                                    Belum ada <span class="font-semibold text-gray-500">Deviasi</span> yang bisa dihitung pada periode ini
+                                @endif
+                            </p>
+                            <p class="text-sm max-w-sm mt-1">
+                                @if ($this->data['jenisGrafik'] === 'realisasi_eku')
+                                    Grafik ini menampilkan data realisasi terbaru yang diinput User BI untuk transaksi berstatus Disetujui.
+                                @else
+                                    Grafik ini membandingkan Forecast dengan Realisasi terbaru pada transaksi berstatus Disetujui.
+                                @endif
+                            </p>
+                        </div>
+                    @else
+                        <div class="relative w-full h-full flex flex-col sm:flex-row items-center justify-center gap-6"
+                             x-data="{ tip: null, mx: 0, my: 0 }" @mousemove="mx = $event.clientX; my = $event.clientY">
+
+                            <div class="relative shrink-0" style="width: min(320px, 100%); aspect-ratio: 1 / 1;">
+                                <svg viewBox="0 0 300 300" class="w-full h-full">
+                                    @foreach ($pie['slices'] as $i => $slice)
+                                        <path d="{{ $slice['d'] }}" fill="{{ $slice['color'] }}"
+                                              class="transition-opacity duration-150"
+                                              :class="tip && tip.i !== {{ $i }} ? 'opacity-60' : 'opacity-100'"
+                                              style="cursor: pointer;"
+                                              @mouseenter="mx = $event.clientX; my = $event.clientY; tip = {
+                                                  i: {{ $i }},
+                                                  label: @js($slice['label']),
+                                                  value: @js($slice['valueFmt']),
+                                                  persen: @js($slice['persen']),
+                                              }"
+                                              @mousemove="mx = $event.clientX; my = $event.clientY"
+                                              @mouseleave="tip = null" />
+                                    @endforeach
+
+                                    <text x="{{ $pie['cx'] }}" y="{{ $pie['cy'] - 6 }}" text-anchor="middle" font-size="13"
+                                          class="fill-gray-500 dark:fill-gray-400 font-medium">Total</text>
+                                    <text x="{{ $pie['cx'] }}" y="{{ $pie['cy'] + 16 }}" text-anchor="middle" font-size="16"
+                                          class="fill-gray-800 dark:fill-white font-bold">{{ $pie['totalFmt'] }}</text>
+                                </svg>
+                            </div>
+
+                            <div class="flex flex-col gap-2 text-sm">
+                                @foreach ($pie['slices'] as $slice)
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: {{ $slice['color'] }}"></span>
+                                        <span class="text-gray-600 dark:text-gray-300">{{ $slice['label'] }}</span>
+                                        <span class="font-semibold text-gray-800 dark:text-white ml-1">{{ $slice['persen'] }}%</span>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            {{-- Box overview info saat hover --}}
+                            <div x-show="tip" x-cloak
+                                 class="pointer-events-none fixed z-50 rounded-lg bg-blue-900 dark:bg-gray-800 border border-white/10 text-white text-xs px-3.5 py-2.5 shadow-xl min-w-[170px]"
+                                 :style="`left: ${mx + 16}px; top: ${my + 16}px;`">
+                                <template x-if="tip">
+                                    <div class="space-y-1">
+                                        <p class="font-semibold text-sm text-white" x-text="tip.label"></p>
+                                        <p class="flex items-center justify-between gap-3">
+                                            <span class="text-white/80">Nominal</span>
+                                            <span class="font-medium" x-text="tip.value"></span>
+                                        </p>
+                                        <p class="flex items-center justify-between gap-3">
+                                            <span class="text-white/80">Persentase</span>
+                                            <span class="font-medium" x-text="tip.persen + '%'"></span>
+                                        </p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    @endif
                 @else
                     @php($chart = $this->chartSvgData())
 

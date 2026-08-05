@@ -48,8 +48,8 @@ class Dashboard extends BaseDashboard implements HasForms
                     ->live()
                     ->options([
                         'forecast_eku' => 'Forecast EKU',
-                        'realisasi_eku' => 'Realisasi EKU (segera hadir)',
-                        'deviasi_forecast' => 'Deviasi Forecast (segera hadir)',
+                        'realisasi_eku' => 'Realisasi EKU',
+                        'deviasi_forecast' => 'Deviasi Forecast',
                         'tukab' => 'Tukab (segera hadir)',
                     ]),
 
@@ -332,6 +332,155 @@ class Dashboard extends BaseDashboard implements HasForms
             'setoranPoints' => $toPointsString($setoranXY),
             'penarikanPoints' => $toPointsString($penarikanXY),
             'hasData' => array_sum($data['setoran']) > 0 || array_sum($data['penarikan']) > 0,
+        ];
+    }
+
+    /**
+     * Total Realisasi (Setoran vs Penarikan) dari input realisasi PALING BARU
+     * setiap transaksi yang berstatus Disetujui, sesuai filter periode & bank
+     * yang sedang aktif di dashboard.
+     */
+    protected function realisasiChartData(): array
+    {
+        $approvedIds = (clone $this->scopedTransactionsQuery())
+            ->where('status', EkuTransaction::STATUS_DISETUJUI)
+            ->pluck('id');
+
+        $totalSetoran = 0.0;
+        $totalPenarikan = 0.0;
+
+        EkuTransaction::query()
+            ->whereIn('id', $approvedIds)
+            ->with('realisasiTerbaru')
+            ->get()
+            ->each(function (EkuTransaction $trx) use (&$totalSetoran, &$totalPenarikan) {
+                if ($realisasi = $trx->realisasiTerbaru) {
+                    $totalSetoran += (float) $realisasi->total_setoran;
+                    $totalPenarikan += (float) $realisasi->total_penarikan;
+                }
+            });
+
+        return [
+            'labels' => ['Realisasi Setoran', 'Realisasi Penarikan'],
+            'values' => [$totalSetoran, $totalPenarikan],
+            'colors' => ['#10b981', '#fb7185'],
+        ];
+    }
+
+    /**
+     * Komposisi Deviasi (Forecast vs Realisasi) di seluruh transaksi yang
+     * cocok dengan filter dashboard. Deviasi positif (forecast > realisasi)
+     * dikelompokkan sebagai "Under-Realisasi", deviasi negatif (realisasi >
+     * forecast) sebagai "Over-Realisasi".
+     */
+    protected function deviasiChartData(): array
+    {
+        $approvedIds = (clone $this->scopedTransactionsQuery())
+            ->where('status', EkuTransaction::STATUS_DISETUJUI)
+            ->pluck('id');
+
+        $totalUnderRealisasi = 0.0;
+        $totalOverRealisasi = 0.0;
+
+        EkuTransaction::query()
+            ->whereIn('id', $approvedIds)
+            ->with('realisasiTerbaru')
+            ->get()
+            ->each(function (EkuTransaction $trx) use (&$totalUnderRealisasi, &$totalOverRealisasi) {
+                foreach ($trx->hitungDeviasi() as $baris) {
+                    if ($baris['deviasi'] > 0) {
+                        $totalUnderRealisasi += $baris['deviasi'];
+                    } elseif ($baris['deviasi'] < 0) {
+                        $totalOverRealisasi += abs($baris['deviasi']);
+                    }
+                }
+            });
+
+        return [
+            'labels' => ['Under-Realisasi', 'Over-Realisasi'],
+            'values' => [$totalUnderRealisasi, $totalOverRealisasi],
+            'colors' => ['#f59e0b', '#3b82f6'],
+        ];
+    }
+
+    public function realisasiPieData(): array
+    {
+        return $this->pieSvgData($this->realisasiChartData());
+    }
+
+    public function deviasiPieData(): array
+    {
+        return $this->pieSvgData($this->deviasiChartData());
+    }
+
+    /**
+     * Ubah pasangan labels/values/colors jadi donut chart SVG (path per
+     * slice + persentase), dengan pola perhitungan yang sama seperti
+     * chartSvgData() untuk grafik forecast.
+     */
+    protected function pieSvgData(array $data): array
+    {
+        $labels = $data['labels'];
+        $values = $data['values'];
+        $colors = $data['colors'];
+
+        $total = array_sum($values);
+
+        if ($total <= 0) {
+            return ['hasData' => false, 'slices' => [], 'total' => 0];
+        }
+
+        $cx = 150;
+        $cy = 150;
+        $rOuter = 130;
+        $rInner = 75;
+
+        $toRad = fn (float $deg) => deg2rad($deg);
+        $titik = fn (float $r, float $deg) => [
+            round($cx + $r * cos($toRad($deg)), 2),
+            round($cy + $r * sin($toRad($deg)), 2),
+        ];
+
+        $slices = [];
+        $sudutAwal = -90.0; // mulai dari jam 12
+
+        foreach ($values as $i => $value) {
+            if ($value <= 0) {
+                continue;
+            }
+
+            $persen = $value / $total * 100;
+            $sapuan = $value / $total * 360;
+            $sudutAkhir = $sudutAwal + $sapuan;
+            $busurBesar = $sapuan > 180 ? 1 : 0;
+
+            [$x1, $y1] = $titik($rOuter, $sudutAwal);
+            [$x2, $y2] = $titik($rOuter, $sudutAkhir);
+            [$xi1, $yi1] = $titik($rInner, $sudutAkhir);
+            [$xi2, $yi2] = $titik($rInner, $sudutAwal);
+
+            $d = "M {$x1},{$y1} "
+                ."A {$rOuter},{$rOuter} 0 {$busurBesar} 1 {$x2},{$y2} "
+                ."L {$xi1},{$yi1} "
+                ."A {$rInner},{$rInner} 0 {$busurBesar} 0 {$xi2},{$yi2} Z";
+
+            $slices[] = [
+                'd' => $d,
+                'color' => $colors[$i] ?? '#94a3b8',
+                'label' => $labels[$i] ?? '',
+                'valueFmt' => $this->formatRupiahPenuh($value),
+                'persen' => round($persen, 1),
+            ];
+
+            $sudutAwal = $sudutAkhir;
+        }
+
+        return [
+            'hasData' => count($slices) > 0,
+            'slices' => $slices,
+            'cx' => $cx,
+            'cy' => $cy,
+            'totalFmt' => $this->formatRupiahSingkat($total),
         ];
     }
 

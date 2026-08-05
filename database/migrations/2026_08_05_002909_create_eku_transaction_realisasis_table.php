@@ -8,29 +8,30 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('eku_transaction_realisasi_details', function (Blueprint $table) {
+        Schema::create('eku_transaction_realisasis', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('eku_transaction_realisasi_id');
-            $table->foreign('eku_transaction_realisasi_id', 'fk_realisasi_detail_realisasi_id')
-                ->references('id')->on('eku_transaction_realisasis')->cascadeOnDelete();
 
-            $table->string('bulan'); // Januari, Februari, dst.
-            $table->string('jenis_file'); // 'Setoran' atau 'Penarikan'
+            $table->foreignId('eku_transaction_id')
+                ->constrained('eku_transactions')
+                ->cascadeOnDelete();
 
-            $table->decimal('kertas_100k', 20, 2)->default(0);
-            $table->decimal('kertas_50k', 20, 2)->default(0);
-            $table->decimal('kertas_20k', 20, 2)->default(0);
-            $table->decimal('kertas_10k', 20, 2)->default(0);
-            $table->decimal('kertas_5k', 20, 2)->default(0);
-            $table->decimal('kertas_2k', 20, 2)->default(0);
-            $table->decimal('kertas_1k', 20, 2)->default(0);
+            // File Excel realisasi yang diunggah User BI (format sama dengan
+            // Template Kerja EKU yang dipakai bank saat pengajuan/forecast).
+            $table->string('file_setoran')->nullable();
+            $table->string('file_penarikan')->nullable();
 
-            $table->decimal('logam_1k', 20, 2)->default(0);
-            $table->decimal('logam_500', 20, 2)->default(0);
-            $table->decimal('logam_200', 20, 2)->default(0);
-            $table->decimal('logam_100', 20, 2)->default(0);
+            // TOTAL per jenis & keseluruhan, hasil rekap dari
+            // eku_transaction_realisasi_details (lihat recalculateTotals()).
+            $table->decimal('total_setoran', 20, 2)->default(0);
+            $table->decimal('total_penarikan', 20, 2)->default(0);
+            $table->decimal('total_nominal', 20, 2)->default(0);
 
-            $table->decimal('subtotal', 20, 2)->default(0);
+            $table->foreignId('input_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+
+            $table->timestamp('input_at')->nullable();
 
             $table->timestamps();
         });
@@ -38,6 +39,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('eku_transaction_realisasi_details');
+        Schema::dropIfExists('eku_transaction_realisasis');
     }
 };
