@@ -6,13 +6,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\EkuExcelImport;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Filament\Notifications\Notification;
 use App\Models\EkuDeadline;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class EkuTransaction extends Model
 {
@@ -42,7 +42,7 @@ class EkuTransaction extends Model
         ];
     }
 
-  protected static function booted()
+    protected static function booted()
     {
         static::creating(function ($transaction) {
             $transaction->file_setoran_original ??= $transaction->file_setoran;
@@ -52,10 +52,6 @@ class EkuTransaction extends Model
         });
 
         static::saving(function ($transaction) {
-            // "Batasan Periode" ditentukan oleh Admin BI lewat halaman
-            // "Management EKU" (bisa per-periode, atau satu batas waktu
-            // global untuk semua periode). Setiap kali record disimpan,
-            // isi otomatis dari pengaturan yang berlaku.
             $deadline = EkuDeadline::untukPeriode($transaction->periode) ?? EkuDeadline::current();
 
             $transaction->batasan_periode = $deadline?->batas_waktu
@@ -236,6 +232,11 @@ class EkuTransaction extends Model
         }
     }
 
+    /**
+     * Tulis ulang nilai-nilai di file Excel fisik (file_setoran / file_penarikan)
+     * supaya sesuai dengan data terbaru di database (misalnya setelah User BI
+     * mengedit angka lewat "Rincian Proyeksi EKU Bulanan").
+     */
     public function syncExcelValuesToFile(string $jenisFile): void
     {
         $fieldFile = $jenisFile === 'Setoran' ? 'file_setoran' : 'file_penarikan';
@@ -246,6 +247,7 @@ class EkuTransaction extends Model
         if (! $filePath || ! Storage::disk('public')->exists($filePath)) {
             return;
         }
+
         if ($this->{$fieldOriginal} === $filePath) {
             $pathInfo = pathinfo($filePath);
             $newPath = ($pathInfo['dirname'] !== '.' ? $pathInfo['dirname'] . '/' : '')
@@ -343,6 +345,77 @@ class EkuTransaction extends Model
 
     public function details(): HasMany { return $this->hasMany(EkuTransactionDetail::class); }
 
+    // Semua riwayat input realisasi (bisa lebih dari sekali), terbaru dulu.
+    public function realisasiHistory(): HasMany
+    {
+        return $this->hasMany(EkuTransactionRealisasi::class)->latest('input_at');
+    }
+
+    // Entri realisasi PALING BARU -> dipakai untuk ringkasan & perhitungan deviasi.
+    public function realisasiTerbaru(): HasOne
+    {
+        return $this->hasOne(EkuTransactionRealisasi::class)->latestOfMany('input_at');
+    }
+
+    /**
+     * Bandingkan Forecast (proyeksi yang disetujui) dengan realisasi PALING
+     * BARU yang diinput BI, per bulan & jenis (Setoran/Penarikan).
+     *
+     * Deviasi = Forecast - Realisasi
+     *   - Deviasi POSITIF -> realisasi LEBIH KECIL dari proyeksi (under-realisasi)
+     *   - Deviasi NEGATIF -> realisasi LEBIH BESAR dari proyeksi (over-realisasi)
+     */
+    public function hitungDeviasi(): array
+    {
+        $realisasiTerbaru = $this->realisasiTerbaru;
+
+        if (! $realisasiTerbaru) {
+            return [];
+        }
+
+        $bulanUrut = [
+            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+        ];
+
+        $forecast = $this->details()
+            ->selectRaw('bulan, jenis_file, SUM(subtotal) as total')
+            ->groupBy('bulan', 'jenis_file')
+            ->get();
+
+        $realisasi = $realisasiTerbaru->details()
+            ->selectRaw('bulan, jenis_file, SUM(subtotal) as total')
+            ->groupBy('bulan', 'jenis_file')
+            ->get();
+
+        $hasil = [];
+
+        foreach (['Setoran', 'Penarikan'] as $jenis) {
+            foreach ($bulanUrut as $bulan) {
+                $nilaiForecast = (float) ($forecast->first(fn ($d) => $d->bulan === $bulan && $d->jenis_file === $jenis)?->total ?? 0);
+                $nilaiRealisasi = (float) ($realisasi->first(fn ($d) => $d->bulan === $bulan && $d->jenis_file === $jenis)?->total ?? 0);
+
+                if ($nilaiForecast == 0 && $nilaiRealisasi == 0) {
+                    continue;
+                }
+
+                $deviasiNominal = $nilaiForecast - $nilaiRealisasi;
+                $persenDeviasi = $nilaiForecast > 0 ? round(($deviasiNominal / $nilaiForecast) * 100, 1) : 0;
+
+                $hasil[] = [
+                    'jenis' => $jenis,
+                    'bulan' => $bulan,
+                    'forecast' => $nilaiForecast,
+                    'realisasi' => $nilaiRealisasi,
+                    'deviasi' => $deviasiNominal,
+                    'persen_deviasi' => $persenDeviasi,
+                ];
+            }
+        }
+
+        return $hasil;
+    }
+
     public function scopeForBank(Builder $query, ?int $bankId): Builder
     {
         return $bankId ? $query->where('bank_id', $bankId) : $query;
@@ -353,6 +426,7 @@ class EkuTransaction extends Model
         if (! in_array($this->status, [self::STATUS_MENUNGGU, self::STATUS_REVISI], true)) {
             return false;
         }
+
         return ! EkuDeadline::isTertutup($this->periode);
     }
 
@@ -360,113 +434,4 @@ class EkuTransaction extends Model
     {
         return $this->status === self::STATUS_DISETUJUI;
     }
-
-    // Perhitungan Deviasi Otomatis
-    public function hitungDeviasi(): void
-    {
-        $this->deviasi_setoran = $this->total_realisasi_setoran - $this->total_setoran;
-        $this->deviasi_penarikan = $this->total_realisasi_penarikan - $this->total_penarikan;
-        $this->save();
-    }
-
-    public function getPersentaseDeviasiSetoranAttribute(): float
-    {
-        if ($this->total_setoran == 0) return 0;
-        return round(($this->deviasi_setoran / $this->total_setoran) * 100, 2);
-    }
-
-    public function getPersentaseDeviasiPenarikanAttribute(): float
-    {
-        if ($this->total_penarikan == 0) return 0;
-        return round(($this->deviasi_penarikan / $this->total_penarikan) * 100, 2);
-    }
-
-   public function processRealisasiExcel(string $setoranPath, string $penarikanPath): void
-    {
-        $fullSetoranPath = storage_path('app/public/' . $setoranPath);
-        $fullPenarikanPath = storage_path('app/public/' . $penarikanPath);
-
-        $totalRealisasiSetoran = 0;
-        $totalRealisasiPenarikan = 0;
-
-        $parseMoney = function ($value) {
-            if (is_null($value) || $value === '') return 0;
-            if (is_numeric($value)) return (float) $value;
-            $cleaned = preg_replace('/[^\d]/', '', (string) $value);
-            return (float) $cleaned;
-        };
-
-        // 1. Parsing Excel Realisasi Setoran
-        if (file_exists($fullSetoranPath)) {
-            $spreadsheet = IOFactory::load($fullSetoranPath);
-            $sheet = $spreadsheet->getActiveSheet();
-            $rows = $sheet->toArray(null, true, true, true);
-
-            foreach ($rows as $rowIndex => $row) {
-                if ($rowIndex < 2) continue; // Skip header
-
-                $bulan = trim($row['A'] ?? '');
-                $pecahan = trim($row['B'] ?? '');
-                $nominal = $parseMoney($row['C'] ?? 0);
-
-                if (empty($bulan) || empty($pecahan)) continue;
-
-                $detail = EkuTransactionDetail::where('eku_transaction_id', $this->id)
-                    ->where('bulan', $bulan)
-                    ->where('pecahan', $pecahan)
-                    ->first();
-
-                if ($detail) {
-                    $detail->realisasi_setoran = $nominal;
-                    $detail->deviasi_setoran = $nominal - $detail->setoran;
-                    $detail->save();
-                }
-
-                $totalRealisasiSetoran += $nominal;
-            }
-        }
-
-        // 2. Parsing Excel Realisasi Penarikan
-        if (file_exists($fullPenarikanPath)) {
-            $spreadsheet = IOFactory::load($fullPenarikanPath);
-            $sheet = $spreadsheet->getActiveSheet();
-            $rows = $sheet->toArray(null, true, true, true);
-
-            foreach ($rows as $rowIndex => $row) {
-                if ($rowIndex < 2) continue; // Skip header
-
-                $bulan = trim($row['A'] ?? '');
-                $pecahan = trim($row['B'] ?? '');
-                $nominal = $parseMoney($row['C'] ?? 0);
-
-                if (empty($bulan) || empty($pecahan)) continue;
-
-                $detail = EkuTransactionDetail::where('eku_transaction_id', $this->id)
-                    ->where('bulan', $bulan)
-                    ->where('pecahan', $pecahan)
-                    ->first();
-
-                if ($detail) {
-                    $detail->realisasi_penarikan = $nominal;
-                    $detail->deviasi_penarikan = $nominal - $detail->penarikan;
-                    $detail->save();
-                }
-
-                $totalRealisasiPenarikan += $nominal;
-            }
-        }
-
-        // 3. Simpan Total Realisasi & Deviasi ke Tabel Utama Transaksi
-        $this->total_realisasi_setoran = $totalRealisasiSetoran;
-        $this->total_realisasi_penarikan = $totalRealisasiPenarikan;
-        $this->deviasi_setoran = $totalRealisasiSetoran - $this->total_setoran;
-        $this->deviasi_penarikan = $totalRealisasiPenarikan - $this->total_penarikan;
-        $this->realisasi_uploaded_at = now();
-        $this->save();
-    }
-
-    public function realisasiHistories()
-{
-    return $this->hasMany(EkuRealisasiHistory::class, 'eku_transaction_id');
-}
 }

@@ -7,7 +7,7 @@ use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\KnowledgeCenter;
 use App\Filament\Pages\ManagementEku;
 use App\Filament\Resources\EkuTransactions\EkuTransactionResource;
-use App\Filament\Resources\RealisasiEkuResource; // <--- PASTIKAN INI DI-IMPORT
+use App\Filament\Resources\RealisasiEkus\RealisasiEkuResource;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -51,7 +51,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->resources([
                 EkuTransactionResource::class,
-                RealisasiEkuResource::class, // <--- DAFTARKAN DI SINI AGAR MUNCUL DI SIDEBAR
+                RealisasiEkuResource::class, // <--- PASTIKAN INI DI-DAFTARKAN
             ])
             ->pages([
                 Dashboard::class,
