@@ -49,14 +49,6 @@ class EkuTransactionRealisasi extends Model
         return $this->hasMany(EkuTransactionRealisasiDetail::class, 'eku_transaction_realisasi_id');
     }
 
-    /**
-     * Baca file_setoran / file_penarikan yang barusan diupload. Formatnya
-     * PERSIS SAMA dengan Template Kerja EKU yang dipakai bank waktu
-     * pengajuan (forecast) -> UANG KERTAS / UANG LOGAM per pecahan x 12
-     * kolom bulan. Logic-nya sengaja disamakan dengan
-     * EkuTransaction::reprocessExcelFiles() karena strukturnya identik,
-     * cuma kegunaannya beda (realisasi aktual, bukan proyeksi).
-     */
     public function reprocessExcelFiles(): array
     {
         $realisasi = $this;
@@ -170,8 +162,9 @@ class EkuTransactionRealisasi extends Model
         return ['setoran' => $jumlahSetoran, 'penarikan' => $jumlahPenarikan];
     }
 
-    public static function recalculateTotals(int $realisasiId): void
+   public static function recalculateTotals(int $realisasiId): void
     {
+        // 1. Hitung total nominal untuk SATU file realisasi ini saja
         $totalPerJenis = EkuTransactionRealisasiDetail::query()
             ->where('eku_transaction_realisasi_id', $realisasiId)
             ->selectRaw('jenis_file, SUM(subtotal) as total')
@@ -187,5 +180,25 @@ class EkuTransactionRealisasi extends Model
             'total_penarikan' => $totalPerJenis['Penarikan'] ?? 0,
             'total_nominal' => $grandTotal ?? 0,
         ]);
+
+        // 2. AKUMULASIKAN KESELURUHAN KE TABEL TRANSAKSI UTAMA
+        $realisasi = self::find($realisasiId);
+        if ($realisasi && $realisasi->eku_transaction_id) {
+            $trx = \App\Models\EkuTransaction::find($realisasi->eku_transaction_id);
+            
+            if ($trx) {
+                // Jumlahkan SEMUA file realisasi yang pernah diupload untuk transaksi ini
+                $sumSetoran = self::where('eku_transaction_id', $trx->id)->sum('total_setoran');
+                $sumPenarikan = self::where('eku_transaction_id', $trx->id)->sum('total_penarikan');
+                
+                // Update ke tabel eku_transactions (termasuk total & deviasi keseluruhan)
+                $trx->update([
+                    'total_realisasi_setoran' => $sumSetoran,
+                    'total_realisasi_penarikan' => $sumPenarikan,
+                    'deviasi_setoran' => $trx->total_setoran - $sumSetoran,
+                    'deviasi_penarikan' => $trx->total_penarikan - $sumPenarikan,
+                ]);
+            }
+        }
     }
 }

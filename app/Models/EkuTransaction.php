@@ -367,53 +367,66 @@ class EkuTransaction extends Model
      */
     public function hitungDeviasi(): array
     {
-        $realisasiTerbaru = $this->realisasiTerbaru;
-
-        if (! $realisasiTerbaru) {
-            return [];
-        }
-
-        $bulanUrut = [
-            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
-        ];
-
-        $forecast = $this->details()
-            ->selectRaw('bulan, jenis_file, SUM(subtotal) as total')
-            ->groupBy('bulan', 'jenis_file')
-            ->get();
-
-        $realisasi = $realisasiTerbaru->details()
-            ->selectRaw('bulan, jenis_file, SUM(subtotal) as total')
-            ->groupBy('bulan', 'jenis_file')
-            ->get();
+        // 1. Ambil semua target Forecast
+        $forecasts = $this->details; 
+        
+        // 2. Ambil KESELURUHAN (Akumulasi) file realisasi, BUKAN hanya yang terbaru
+        $realisasiDetails = \App\Models\EkuTransactionRealisasiDetail::whereHas('realisasi', function ($q) {
+            $q->where('eku_transaction_id', $this->id);
+        })
+        ->selectRaw('bulan, jenis_file, SUM(subtotal) as total_realisasi')
+        ->groupBy('bulan', 'jenis_file')
+        ->get();
 
         $hasil = [];
 
-        foreach (['Setoran', 'Penarikan'] as $jenis) {
-            foreach ($bulanUrut as $bulan) {
-                $nilaiForecast = (float) ($forecast->first(fn ($d) => $d->bulan === $bulan && $d->jenis_file === $jenis)?->total ?? 0);
-                $nilaiRealisasi = (float) ($realisasi->first(fn ($d) => $d->bulan === $bulan && $d->jenis_file === $jenis)?->total ?? 0);
+        // 3. Susun data Forecast sebagai baseline
+        foreach ($forecasts as $f) {
+            $key = $f->bulan . '_' . $f->jenis_file;
+            $hasil[$key] = [
+                'bulan' => $f->bulan,
+                'jenis' => $f->jenis_file,
+                'forecast' => $f->subtotal,
+                'realisasi' => 0,
+                'deviasi' => $f->subtotal, // Default sisa deviasi = forecast
+                'persen_deviasi' => -100 
+            ];
+        }
 
-                if ($nilaiForecast == 0 && $nilaiRealisasi == 0) {
-                    continue;
-                }
-
-                $deviasiNominal = $nilaiForecast - $nilaiRealisasi;
-                $persenDeviasi = $nilaiForecast > 0 ? round(($deviasiNominal / $nilaiForecast) * 100, 1) : 0;
-
-                $hasil[] = [
-                    'jenis' => $jenis,
-                    'bulan' => $bulan,
-                    'forecast' => $nilaiForecast,
-                    'realisasi' => $nilaiRealisasi,
-                    'deviasi' => $deviasiNominal,
-                    'persen_deviasi' => $persenDeviasi,
+        // 4. Masukkan Akumulasi Realisasi dan Hitung Deviasinya
+        foreach ($realisasiDetails as $r) {
+            $key = $r->bulan . '_' . $r->jenis_file;
+            
+            // Jaga-jaga jika ada realisasi tapi tidak ada forecast-nya
+            if (!isset($hasil[$key])) {
+                $hasil[$key] = [
+                    'bulan' => $r->bulan,
+                    'jenis' => $r->jenis_file,
+                    'forecast' => 0,
+                    'realisasi' => 0,
+                    'deviasi' => 0,
+                    'persen_deviasi' => 0
                 ];
+            }
+
+            // AKUMULASI (Tambah terus jika ada file baru)
+            $hasil[$key]['realisasi'] += $r->total_realisasi;
+            
+            $forecast = $hasil[$key]['forecast'];
+            $realisasi = $hasil[$key]['realisasi'];
+            $deviasi = $forecast - $realisasi;
+            
+            $hasil[$key]['deviasi'] = $deviasi;
+            
+            if ($forecast > 0) {
+                // Menghitung persentase kelebihan / kekurangannya
+                $hasil[$key]['persen_deviasi'] = round((($realisasi - $forecast) / $forecast) * 100, 1);
+            } else {
+                $hasil[$key]['persen_deviasi'] = $realisasi > 0 ? 100 : 0;
             }
         }
 
-        return $hasil;
+        return array_values($hasil);
     }
 
     public function scopeForBank(Builder $query, ?int $bankId): Builder

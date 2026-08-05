@@ -3,67 +3,80 @@
     $rupiah = fn ($v) => 'Rp ' . number_format((float) $v, 0, ',', '.');
 @endphp
 
-<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 space-y-4">
-    <div>
-        <h3 class="font-semibold text-gray-800 dark:text-white">Deviasi per Bulan</h3>
-        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-            Perbandingan antara proyeksi (forecast) yang disetujui dengan realisasi terbaru yang diinput BI.
-        </p>
-    </div>
+{{-- BUNGKUS DENGAN COMPONENT WIDGET FILAMENT AGAR FULL WIDTH BERFUNGSI --}}
+<x-filament-widgets::widget>
+    <div class="w-full bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 space-y-4">
+        <div>
+            <h3 class="font-semibold text-gray-800 dark:text-white">Deviasi & Akumulasi Realisasi</h3>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                Perbandingan antara target (forecast) dengan <strong>total akumulasi</strong> dari semua riwayat file realisasi.
+            </p>
+        </div>
 
-    @if (count($deviasiList) > 0)
-        <div class="overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-800">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="bg-gray-50 dark:bg-gray-800/70 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                        <th class="px-4 py-2.5 font-semibold">Bulan</th>
-                        <th class="px-4 py-2.5 font-semibold">Jenis</th>
-                        <th class="px-4 py-2.5 font-semibold text-right">Forecast</th>
-                        <th class="px-4 py-2.5 font-semibold text-right">Realisasi</th>
-                        <th class="px-4 py-2.5 font-semibold text-right">Deviasi</th>
-                        <th class="px-4 py-2.5 font-semibold text-right">% Deviasi</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                    @foreach ($deviasiList as $row)
-                        @php
-                            $status = $row['deviasi'] > 0
-                                ? ['label' => 'Kurang dari Target', 'class' => 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400']
-                                : ($row['deviasi'] < 0
-                                    ? ['label' => 'Melebihi Target', 'class' => 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400']
-                                    : ['label' => 'Sesuai Target', 'class' => 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400']);
-                        @endphp
-                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                            <td class="px-4 py-2.5 text-gray-700 dark:text-gray-200">{{ $row['bulan'] }}</td>
-                            <td class="px-4 py-2.5">
-                                <span class="px-2 py-0.5 rounded text-xs font-medium {{ $row['jenis'] === 'Setoran' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400' }}">
-                                    {{ $row['jenis'] }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-2.5 text-right text-gray-700 dark:text-gray-200">{{ $rupiah($row['forecast']) }}</td>
-                            <td class="px-4 py-2.5 text-right text-gray-700 dark:text-gray-200">{{ $rupiah($row['realisasi']) }}</td>
-                            <td class="px-4 py-2.5 text-right font-medium text-gray-800 dark:text-white">
-                                {{ $row['deviasi'] > 0 ? '+' : '' }}{{ $rupiah($row['deviasi']) }}
-                            </td>
-                            <td class="px-4 py-2.5 text-right">
-                                <span class="px-2 py-0.5 rounded text-xs font-semibold {{ $status['class'] }}">
-                                    {{ $row['persen_deviasi'] > 0 ? '+' : '' }}{{ $row['persen_deviasi'] }}%
-                                </span>
-                            </td>
+        @if (count($deviasiList) > 0)
+            <div class="w-full overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-800">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-gray-50 dark:bg-gray-800/70 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            <th class="px-4 py-3 font-semibold">Bulan</th>
+                            <th class="px-4 py-3 font-semibold">Jenis</th>
+                            <th class="px-4 py-3 font-semibold text-right">Target (Forecast)</th>
+                            <th class="px-4 py-3 font-semibold text-right">Total Realisasi</th>
+                            <th class="px-4 py-3 font-semibold text-center">Status</th>
+                            <th class="px-4 py-3 font-semibold text-right">Deviasi (Sisa / Over)</th>
                         </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-4 text-xs text-gray-400 dark:text-gray-500 pt-1">
-            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Sesuai target</span>
-            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Realisasi kurang dari target</span>
-            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Realisasi melebihi target</span>
-        </div>
-    @else
-        <div class="text-center text-gray-400 dark:text-gray-500 text-sm py-8 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
-            Belum ada realisasi yang bisa dibandingkan. Input realisasi lewat tabel "Riwayat Input Realisasi" di bawah.
-        </div>
-    @endif
-</div>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                        @foreach ($deviasiList as $row)
+                            @php
+                                $isOver = $row['deviasi'] < 0;
+                                $isSisa = $row['deviasi'] > 0;
+                                
+                                if ($isSisa) {
+                                    $status = ['label' => 'Sisa Target', 'color' => 'amber'];
+                                } elseif ($isOver) {
+                                    $status = ['label' => 'Over Realisasi', 'color' => 'rose'];
+                                } else {
+                                    $status = ['label' => 'Sesuai Target', 'color' => 'emerald'];
+                                }
+                            @endphp
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
+                                <td class="px-4 py-3 text-gray-700 dark:text-gray-200 font-medium">
+                                    {{ $row['bulan'] }}
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2.5 py-1 rounded-md text-[11px] font-medium {{ $row['jenis'] === 'Setoran' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400' }}">
+                                        {{ $row['jenis'] }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-right text-gray-600 dark:text-gray-300">
+                                    {{ $rupiah($row['forecast']) }}
+                                </td>
+                                <td class="px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">
+                                    {{ $rupiah($row['realisasi']) }}
+                                </td>
+                                <td class="px-4 py-3 text-center">
+                                    <div class="inline-flex flex-col items-center">
+                                        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-{{ $status['color'] }}-50 text-{{ $status['color'] }}-700 dark:bg-{{ $status['color'] }}-500/10 dark:text-{{ $status['color'] }}-400">
+                                            {{ $status['label'] }}
+                                        </span>
+                                        <span class="text-[10px] mt-1 text-{{ $status['color'] }}-600 dark:text-{{ $status['color'] }}-400 font-medium">
+                                            {{ $row['persen_deviasi'] > 0 ? '+' : '' }}{{ $row['persen_deviasi'] }}%
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-right font-bold text-{{ $status['color'] }}-600 dark:text-{{ $status['color'] }}-400">
+                                    {{ $isOver ? '(Mines) ' : '' }}{{ $rupiah(abs($row['deviasi'])) }}
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            <div class="w-full text-center text-gray-400 dark:text-gray-500 text-sm py-8 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+                Belum ada data yang bisa dibandingkan.
+            </div>
+        @endif
+    </div>
+</x-filament-widgets::widget>
