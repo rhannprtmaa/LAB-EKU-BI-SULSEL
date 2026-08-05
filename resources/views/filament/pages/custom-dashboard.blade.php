@@ -13,15 +13,6 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
             @php
                 $colorMap = [
-                    'green'  => ['bg' => 'bg-green-50 dark:bg-green-900/20', 'text' => 'text-green-700 dark:text-green-400'],
-                    'yellow' => ['bg' => 'bg-yellow-50 dark:bg-yellow-900/20', 'text' => 'text-yellow-700 dark:text-yellow-400'],
-                    'red'    => ['bg' => 'bg-red-50 dark:bg-red-900/20', 'text' => 'text-red-700 dark:text-red-400'],
-                    'blue'   => ['bg' => 'bg-indigo-50 dark:bg-indigo-900/20', 'text' => 'text-indigo-700 dark:text-indigo-400'],
-                ];
-            @endphp
-
-                @php
-                $colorMap = [
                     'green' => [
                         0 => ['bg' => 'bg-green-50 dark:bg-green-950/40', 'text' => 'text-green-400 dark:text-green-600'],
                         1 => ['bg' => 'bg-green-100 dark:bg-green-900/50', 'text' => 'text-green-600 dark:text-green-400'],
@@ -53,61 +44,60 @@
                 ];
             @endphp
 
-@foreach ($this->getStats() as $stat)
+            @foreach ($this->getStats() as $stat)
+                @php
+                    $tier = $stat['tier'] ?? 0;
+                    $color = $stat['color'] ?? 'blue';
+                    $warna = $colorMap[$color][$tier] ?? $colorMap['blue'][0];
+                @endphp
 
-    @php
-        $tier = $stat['tier'] ?? 0;
-        $color = $stat['color'] ?? 'blue';
-        $warna = $colorMap[$color][$tier] ?? $colorMap['blue'][0];
-    @endphp
+                <div class="rounded-2xl p-4 {{ $warna['bg'] }} border border-black/5 shadow-sm hover:shadow-md transition-all duration-300">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium {{ $tier >= 4 ? 'text-white/80' : 'text-gray-600 dark:text-gray-300' }}">
+                            {{ $stat['label'] }}
+                        </span>
 
-    <div class="rounded-2xl p-4 {{ $warna['bg'] }} border border-black/5 shadow-sm hover:shadow-md transition-all duration-300">
-        <div class="flex items-center justify-between mb-2">
-            <span class="text-sm font-medium {{ $tier >= 4 ? 'text-white/80' : 'text-gray-600 dark:text-gray-300' }}">
-                {{ $stat['label'] }}
-            </span>
+                        <x-dynamic-component
+                            :component="$stat['icon']"
+                            class="w-5 h-5 {{ $warna['text'] }}"
+                        />
+                    </div>
 
-            <x-dynamic-component
-                :component="$stat['icon']"
-                class="w-5 h-5 {{ $warna['text'] }}"
-            />
+                    <div class="text-2xl font-bold {{ $warna['text'] }}">
+                        {{ number_format($stat['value']) }}
+                    </div>
+                </div>
+            @endforeach
         </div>
 
-        <div class="text-2xl font-bold {{ $warna['text'] }}">
-            {{ number_format($stat['value']) }}
-        </div>
-    </div>
-
-@endforeach
-        </div>
         <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4 shrink-0">
             {{ $this->form }}
         </div>
+
         <div class="flex-1 min-h-0 flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
             <div class="flex items-center justify-between mb-3 shrink-0">
                 <h3 class="font-semibold text-gray-800 dark:text-white">Grafik</h3>
 
-               @if ($this->data['jenisGrafik'] === 'forecast_eku')
+                @if ($this->data['jenisGrafik'] === 'forecast_eku')
                     <div class="flex items-center gap-4 text-sm">
                         <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Setoran</span>
                         <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span> Penarikan</span>
                     </div>
                 @elseif ($this->data['jenisGrafik'] === 'realisasi_eku')
                     <div class="flex items-center gap-4 text-sm">
-                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Realisasi Setoran</span>
-                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span> Realisasi Penarikan</span>
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> UPB</span>
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> UPK</span>
                     </div>
                 @elseif ($this->data['jenisGrafik'] === 'deviasi_forecast')
                     <div class="flex items-center gap-4 text-sm">
                         <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background-color:#f59e0b"></span> Under-Realisasi</span>
-                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background-color:#3b82f6"></span> Over-Realisasi</span>
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background-color:#ef4444"></span> Over-Realisasi</span>
                     </div>
                 @endif
             </div>
 
             <div class="flex-1 min-h-0 flex items-center justify-center">
                 @if ($this->data['jenisGrafik'] === 'tukab')
-
                     <div class="flex flex-col items-center justify-center text-center text-gray-400">
                         <x-heroicon-o-chart-bar class="w-10 h-10 mb-3" />
                         <p class="font-medium">Grafik ini belum tersedia</p>
@@ -115,7 +105,9 @@
                             Fitur input data untuk grafik ini masih dalam tahap pengembangan pada fase berikutnya.
                         </p>
                     </div>
+
                 @elseif (in_array($this->data['jenisGrafik'], ['realisasi_eku', 'deviasi_forecast']))
+                    {{-- GRAFIK PIE CHART UNTUK REALISASI UPB/UPK & DEVIASI --}}
                     @php($pie = $this->data['jenisGrafik'] === 'realisasi_eku' ? $this->realisasiPieData() : $this->deviasiPieData())
 
                     @if (! $pie['hasData'])
@@ -125,7 +117,7 @@
                                 @if ($this->data['jenisGrafik'] === 'realisasi_eku')
                                     Belum ada data <span class="font-semibold text-gray-500">Realisasi</span> yang diinput pada periode ini
                                 @else
-                                    Belum ada <span class="font-semibold text-gray-500">Deviasi</span> yang bisa dihitung pada periode ini
+                                    Belum ada data <span class="font-semibold text-gray-500">Deviasi</span> yang dihitung pada periode ini
                                 @endif
                             </p>
                             <p class="text-sm max-w-sm mt-1">
@@ -137,44 +129,71 @@
                             </p>
                         </div>
                     @else
-                        <div class="relative w-full h-full flex flex-col sm:flex-row items-center justify-center gap-6"
-                             x-data="{ tip: null, mx: 0, my: 0 }" @mousemove="mx = $event.clientX; my = $event.clientY">
+                        <div class="relative w-full h-full flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-12 py-2"
+                             x-data="{ tip: null, mx: 0, my: 0, animate: false }"
+                             x-init="requestAnimationFrame(() => requestAnimationFrame(() => animate = true))"
+                             @mousemove="mx = $event.clientX; my = $event.clientY">
 
-                            <div class="relative shrink-0" style="width: min(320px, 100%); aspect-ratio: 1 / 1;">
-                                <svg viewBox="0 0 300 300" class="w-full h-full">
-                                    @foreach ($pie['slices'] as $i => $slice)
-                                        <path d="{{ $slice['d'] }}" fill="{{ $slice['color'] }}"
-                                              class="transition-opacity duration-150"
-                                              :class="tip && tip.i !== {{ $i }} ? 'opacity-60' : 'opacity-100'"
-                                              style="cursor: pointer;"
-                                              @mouseenter="mx = $event.clientX; my = $event.clientY; tip = {
-                                                  i: {{ $i }},
-                                                  label: @js($slice['label']),
-                                                  value: @js($slice['valueFmt']),
-                                                  persen: @js($slice['persen']),
-                                              }"
-                                              @mousemove="mx = $event.clientX; my = $event.clientY"
-                                              @mouseleave="tip = null" />
-                                    @endforeach
+                            <div class="relative shrink-0 drop-shadow-sm" style="width: min(260px, 80%); aspect-ratio: 1 / 1;">
+                                <svg viewBox="0 0 200 200" class="w-full h-full -rotate-0">
+                                    <g transform="rotate(-90 100 100)">
+                                        <circle cx="100" cy="100" r="{{ $pie['radius'] }}" fill="none"
+                                                stroke="currentColor" class="text-gray-100 dark:text-gray-800"
+                                                stroke-width="{{ $pie['strokeWidth'] }}" />
 
-                                    <text x="{{ $pie['cx'] }}" y="{{ $pie['cy'] - 6 }}" text-anchor="middle" font-size="13"
-                                          class="fill-gray-500 dark:fill-gray-400 font-medium">Total</text>
-                                    <text x="{{ $pie['cx'] }}" y="{{ $pie['cy'] + 16 }}" text-anchor="middle" font-size="16"
-                                          class="fill-gray-800 dark:fill-white font-bold">{{ $pie['totalFmt'] }}</text>
+                                        @foreach ($pie['slices'] as $i => $slice)
+                                            <circle cx="100" cy="100" r="{{ $pie['radius'] }}" fill="none"
+                                                    stroke="{{ $slice['color'] }}"
+                                                    stroke-width="{{ $pie['strokeWidth'] }}"
+                                                    stroke-linecap="round"
+                                                    stroke-dashoffset="{{ $slice['dashOffset'] }}"
+                                                    class="transition-opacity duration-150"
+                                                    :class="tip && tip.i !== {{ $i }} ? 'opacity-40' : 'opacity-100'"
+                                                    :stroke-dasharray="animate ? '{{ $slice['dashLen'] }} {{ $pie['circumference'] }}' : '0 {{ $pie['circumference'] }}'"
+                                                    style="cursor: pointer; transition: stroke-dasharray 0.9s cubic-bezier(0.4,0,0.2,1) {{ $i * 0.12 }}s, opacity 0.15s;"
+                                                    @mouseenter="mx = $event.clientX; my = $event.clientY; tip = {
+                                                        i: {{ $i }},
+                                                        label: @js($slice['label']),
+                                                        value: @js($slice['valueFmt']),
+                                                        persen: @js($slice['persen']),
+                                                    }"
+                                                    @mousemove="mx = $event.clientX; my = $event.clientY"
+                                                    @mouseleave="tip = null" />
+                                        @endforeach
+                                    </g>
                                 </svg>
+
+                                <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
+                                    <span class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Total</span>
+                                    <span class="text-lg sm:text-xl font-bold text-gray-800 dark:text-white leading-tight">{{ $pie['totalFmt'] }}</span>
+                                    <span class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{{ $pie['jumlahKategori'] }} Kategori</span>
+                                </div>
                             </div>
 
-                            <div class="flex flex-col gap-2 text-sm">
-                                @foreach ($pie['slices'] as $slice)
-                                    <div class="flex items-center gap-2">
-                                        <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: {{ $slice['color'] }}"></span>
-                                        <span class="text-gray-600 dark:text-gray-300">{{ $slice['label'] }}</span>
-                                        <span class="font-semibold text-gray-800 dark:text-white ml-1">{{ $slice['persen'] }}%</span>
+                            <div class="flex flex-col gap-4 w-full sm:w-64">
+                                @foreach ($pie['slices'] as $i => $slice)
+                                    <div class="cursor-pointer" @mouseenter="tip = {
+                                            i: {{ $i }},
+                                            label: @js($slice['label']),
+                                            value: @js($slice['valueFmt']),
+                                            persen: @js($slice['persen']),
+                                        }" @mouseleave="tip = null">
+                                        <div class="flex items-center justify-between mb-1.5">
+                                            <span class="flex items-center gap-2 text-gray-700 dark:text-gray-200 font-medium text-sm">
+                                                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: {{ $slice['color'] }}"></span>
+                                                {{ $slice['label'] }}
+                                            </span>
+                                            <span class="font-bold text-gray-900 dark:text-white text-sm">{{ $slice['persen'] }}%</span>
+                                        </div>
+                                        <div class="h-2 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                                            <div class="h-full rounded-full"
+                                                 :style="`background-color: {{ $slice['color'] }}; width: ${animate ? {{ $slice['persen'] }} : 0}%; transition: width 0.9s cubic-bezier(0.4,0,0.2,1) {{ $i * 0.12 }}s;`"></div>
+                                        </div>
+                                        <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ $slice['valueFmt'] }}</div>
                                     </div>
                                 @endforeach
                             </div>
 
-                            {{-- Box overview info saat hover --}}
                             <div x-show="tip" x-cloak
                                  class="pointer-events-none fixed z-50 rounded-lg bg-blue-900 dark:bg-gray-800 border border-white/10 text-white text-xs px-3.5 py-2.5 shadow-xl min-w-[170px]"
                                  :style="`left: ${mx + 16}px; top: ${my + 16}px;`">
@@ -194,7 +213,9 @@
                             </div>
                         </div>
                     @endif
+
                 @else
+                    {{-- GRAFIK GARIS (LINE CHART) FORECAST --}}
                     @php($chart = $this->chartSvgData())
 
                     @if (! $chart['hasData'])
@@ -267,20 +288,20 @@
 
                             {{-- Box overview info saat hover --}}
                             <div x-show="tip" x-cloak
-                              class="pointer-events-none fixed z-50 rounded-lg bg-blue-900 dark:bg-gray-800 border border-white/10 text-white text-xs px-3.5 py-2.5 shadow-xl min-w-[190px]"
+                                 class="pointer-events-none fixed z-50 rounded-lg bg-blue-900 dark:bg-gray-800 border border-white/10 text-white text-xs px-3.5 py-2.5 shadow-xl min-w-[190px]"
                                  :style="`left: ${mx + 16}px; top: ${my + 16}px;`">
                                 <template x-if="tip">
                                     <div class="space-y-1.5">
                                         <p class="font-semibold text-sm text-white" x-text="tip.bulan"></p>
                                         <p class="flex items-center justify-between gap-3">
                                             <span class="flex items-center gap-1.5 text-white/80">
-                                                <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span> Setoran (UPB)
+                                                <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span> Setoran
                                             </span>
                                             <span class="font-medium" x-text="tip.setoran + ' (' + tip.persenSetoran + '%)'"></span>
                                         </p>
                                         <p class="flex items-center justify-between gap-3">
                                             <span class="flex items-center gap-1.5 text-white/80">
-                                                <span class="w-2 h-2 rounded-full bg-rose-400 inline-block"></span> Penarikan (UPK)
+                                                <span class="w-2 h-2 rounded-full bg-rose-400 inline-block"></span> Penarikan
                                             </span>
                                             <span class="font-medium" x-text="tip.penarikan + ' (' + tip.persenPenarikan + '%)'"></span>
                                         </p>
