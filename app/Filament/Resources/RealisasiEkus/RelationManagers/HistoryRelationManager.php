@@ -92,7 +92,9 @@ class HistoryRelationManager extends RelationManager
                     ->formatStateUsing(fn ($state, $record) => $state
                         ? ($record->file_setoran_nama_asli ?? basename($state))
                         : 'Tidak ada')
-                    ->url(fn ($record) => $record->file_setoran ? Storage::disk('public')->url($record->file_setoran) : null)
+                    ->url(fn ($record) => $record->file_setoran
+                        ? Storage::disk('public')->url($record->file_setoran)
+                        : null)
                     ->openUrlInNewTab(),
 
                 TextColumn::make('file_penarikan')

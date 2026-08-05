@@ -6,12 +6,9 @@ use App\Filament\Resources\EkuTransactions\EkuTransactionResource;
 use App\Models\Bank;
 use App\Models\EkuTransaction;
 use App\Support\CurrentUser;
-use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
-use Filament\Forms\Components\FileUpload;
-use Filament\Notifications\Notification;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -59,7 +56,6 @@ class EkuTransactionsTable
                     )
                     ->sortable(),
 
-                // KOLOM BARU: Total Realisasi Setoran
                 TextColumn::make('total_realisasi_setoran')
                     ->label('Realisasi Setoran')
                     ->numeric(0, ',', '.')
@@ -67,7 +63,6 @@ class EkuTransactionsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                // KOLOM BARU: Total Realisasi Penarikan
                 TextColumn::make('total_realisasi_penarikan')
                     ->label('Realisasi Penarikan')
                     ->numeric(0, ',', '.')
@@ -75,7 +70,6 @@ class EkuTransactionsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                // KOLOM BARU: Deviasi Setoran
                 TextColumn::make('deviasi_setoran')
                     ->label('Deviasi Setoran')
                     ->numeric(0, ',', '.')
@@ -84,7 +78,6 @@ class EkuTransactionsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                // KOLOM BARU: Deviasi Penarikan
                 TextColumn::make('deviasi_penarikan')
                     ->label('Deviasi Penarikan')
                     ->numeric(0, ',', '.')
@@ -137,50 +130,7 @@ class EkuTransactionsTable
                 ViewAction::make()
                     ->label('Detail'),
 
-                // ACTION BARU: Input Realisasi EKU oleh Pihak BI
-                Action::make('uploadRealisasi')
-                    ->label('Input Realisasi')
-                    ->icon('heroicon-o-arrow-up-tray')
-                    ->color('success')
-                    ->visible($isInternalBi)
-                    ->form([
-                        FileUpload::make('file_realisasi_setoran')
-                            ->label('Upload File Excel Realisasi Setoran')
-                            ->disk('public')
-                            ->directory('realisasi-eku/setoran')
-                            ->acceptedFileTypes([
-                                'application/vnd.ms-excel',
-                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                            ])
-                            ->required(),
-
-                        FileUpload::make('file_realisasi_penarikan')
-                            ->label('Upload File Excel Realisasi Penarikan')
-                            ->disk('public')
-                            ->directory('realisasi-eku/penarikan')
-                            ->acceptedFileTypes([
-                                'application/vnd.ms-excel',
-                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                            ])
-                            ->required(),
-                    ])
-                    ->action(function ($record, array $data) {
-                        $record->update([
-                            'file_realisasi_setoran' => $data['file_realisasi_setoran'],
-                            'file_realisasi_penarikan' => $data['file_realisasi_penarikan'],
-                            'realisasi_uploaded_at' => now(),
-                        ]);
-
-                        // Panggil method hitungDeviasi jika kodenya sudah ada di Model
-                        if (method_exists($record, 'hitungDeviasi')) {
-                            $record->hitungDeviasi();
-                        }
-
-                        Notification::make()
-                            ->title('File Realisasi EKU Berhasil Diunggah!')
-                            ->success()
-                            ->send();
-                    }),
+                // ACTION UPLOAD REALISASI SUDAH DIHAPUS DARI SINI
 
                 EditAction::make()
                     ->label('Edit')
