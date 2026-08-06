@@ -4,11 +4,14 @@ namespace App\Filament\Resources\EkuTransactions\Tables;
 
 use App\Filament\Resources\EkuTransactions\EkuTransactionResource;
 use App\Models\Bank;
+use App\Models\EkuDeadline;
 use App\Models\EkuTransaction;
 use App\Support\CurrentUser;
+use Carbon\Carbon;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -130,13 +133,35 @@ class EkuTransactionsTable
                 ViewAction::make()
                     ->label('Detail'),
 
-                // ACTION UPLOAD REALISASI SUDAH DIHAPUS DARI SINI
-
                 EditAction::make()
                     ->label('Edit')
                     ->modalHeading('Edit Pengajuan EKU')
                     ->modalWidth(Width::TwoExtraLarge)
-                    ->visible(fn ($record) => EkuTransactionResource::canEdit($record)),
+                    ->visible(fn ($record) => EkuTransactionResource::canEdit($record))
+                    // --- AWAL TAMBAHAN: Validasi Deadline saat Edit ---
+                    ->before(function (EditAction $action, EkuTransaction $record) {
+                        $user = CurrentUser::get();
+
+                        // Pengecekan HANYA untuk User Perbankan
+                        if ($user?->isUserPerbankan()) {
+
+                            $deadline = EkuDeadline::where('periode', $record->periode)->first();
+
+                            // Jika deadline ada dan waktu sekarang melebihi batas waktu
+                            if ($deadline && now()->isAfter($deadline->batas_waktu)) {
+
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Akses Ditolak!')
+                                    ->body("Waktu pengeditan / revisi EKU untuk periode {$record->periode} telah berakhir pada " . Carbon::parse($deadline->batas_waktu)->translatedFormat('d F Y H:i') . ".")
+                                    ->send();
+
+                                // Hentikan aksi edit
+                                $action->halt();
+                            }
+                        }
+                    }),
+                    // --- AKHIR TAMBAHAN ---
 
                 DeleteAction::make()
                     ->visible(fn ($record) => EkuTransactionResource::canDelete($record)),

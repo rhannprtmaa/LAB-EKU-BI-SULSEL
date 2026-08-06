@@ -5,6 +5,7 @@ namespace App\Filament\Resources\EkuTransactions\Schemas;
 use App\Models\EkuDeadline;
 use App\Models\EkuTransaction;
 use App\Support\CurrentUser;
+use Carbon\Carbon;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -37,47 +38,89 @@ class EkuTransactionForm
 
                 Select::make('periode')
                     ->label('Periode (Tahun)')
-                    ->live()
-                    ->options(fn () => collect([date('Y'), date('Y') + 1, date('Y') + 2])
-                        ->mapWithKeys(function ($tahun) {
-                            $label = EkuDeadline::isTertutup((string) $tahun)
-                                ? "{$tahun} (Ditutup)"
-                                : (string) $tahun;
-
-                            return [(string) $tahun => $label];
-                        })
-                        ->all())
-                    ->disableOptionWhen(fn (string $value): bool => CurrentUser::get()?->isUserPerbankan()
-                        && EkuDeadline::isTertutup($value))
-                    ->default(date('Y') + 1)
                     ->required()
+                    ->live()
+                    // 1. Ekstrak tahun langsung dari tanggal (batas_waktu)
+                    ->options(function () {
+                        $deadlines = EkuDeadline::whereNotNull('batas_waktu')->get();
+                        $options = [];
+
+                        foreach ($deadlines as $d) {
+                            $waktu = $d->batas_waktu instanceof Carbon ? $d->batas_waktu : Carbon::parse($d->batas_waktu);
+                            $tahun = $waktu->format('Y'); // Ambil tahunnya saja
+
+                            $isExpired = now()->isAfter($waktu);
+                            $options[$tahun] = $isExpired ? "{$tahun} (Ditutup)" : $tahun;
+                        }
+
+                        // Urutkan dari tahun terbaru
+                        krsort($options);
+                        return $options;
+                    })
+                    // 2. Default ke tahun dari deadline terbaru
+                    ->default(function () {
+                        $latest = EkuDeadline::whereNotNull('batas_waktu')->latest('batas_waktu')->first();
+                        if ($latest) {
+                            $waktu = $latest->batas_waktu instanceof Carbon ? $latest->batas_waktu : Carbon::parse($latest->batas_waktu);
+                            return $waktu->format('Y');
+                        }
+                        return date('Y');
+                    })
+                    // 3. Disable opsi jika sudah lewat
+                    ->disableOptionWhen(function (string $value): bool {
+                        $user = CurrentUser::get();
+                        if ($user?->isUserPerbankan()) {
+                            // Cari deadline berdasarkan tahun pada batas_waktu
+                            $deadline = EkuDeadline::whereYear('batas_waktu', $value)->first();
+                            if ($deadline && $deadline->batas_waktu) {
+                                $waktu = $deadline->batas_waktu instanceof Carbon ? $deadline->batas_waktu : Carbon::parse($deadline->batas_waktu);
+                                return now()->isAfter($waktu);
+                            }
+                        }
+                        return false;
+                    })
+                    // 4. Validasi saat disubmit
                     ->rule(function () {
                         return function (string $attribute, $value, \Closure $fail) {
-                            if (CurrentUser::get()?->isUserPerbankan() && EkuDeadline::isTertutup($value)) {
-                                $fail('Periode ini sudah melewati batas waktu pengajuan EKU yang ditentukan oleh BI.');
+                            $user = CurrentUser::get();
+                            if ($user?->isUserPerbankan()) {
+                                $deadline = EkuDeadline::whereYear('batas_waktu', $value)->first();
+                                if ($deadline && $deadline->batas_waktu) {
+                                    $waktu = $deadline->batas_waktu instanceof Carbon ? $deadline->batas_waktu : Carbon::parse($deadline->batas_waktu);
+                                    if (now()->isAfter($waktu)) {
+                                        $fail('Periode ini sudah melewati batas waktu pengajuan EKU yang ditentukan oleh BI.');
+                                    }
+                                }
                             }
                         };
                     }),
 
-                // PERBAIKAN: Tambahkan ->dehydrated(false) agar tidak dimasukkan ke query SQL INSERT
                 Placeholder::make('batasan_periode_info')
                     ->label('Batasan Periode')
                     ->columnSpanFull()
                     ->dehydrated(false)
                     ->content(function (Get $get) {
-                        $deadline = EkuDeadline::untukPeriode($get('periode'));
+                        $periode = $get('periode');
 
-                        if (! $deadline || ! $deadline->batas_waktu) {
-                            return new HtmlString('<span class="text-gray-400">Belum ditentukan oleh BI untuk periode ini.</span>');
+                        if (! $periode) {
+                            return new HtmlString('<span class="text-gray-400">Silakan pilih periode terlebih dahulu.</span>');
                         }
 
-                        $tanggal = $deadline->batas_waktu->locale('id')->translatedFormat('d F Y');
+                        // Cari deadline berdasarkan tahun pada batas_waktu
+                        $deadline = EkuDeadline::whereYear('batas_waktu', $periode)->first();
 
-                        if ($deadline->isSudahLewat()) {
-                            return new HtmlString("<span class=\"text-danger-600 font-medium\">Batas Pengajuan s.d {$tanggal} — periode ini sudah ditutup.</span>");
+                        if ($deadline && $deadline->batas_waktu) {
+                            $waktu = $deadline->batas_waktu instanceof Carbon ? $deadline->batas_waktu : Carbon::parse($deadline->batas_waktu);
+                            $tanggal = $waktu->locale('id')->translatedFormat('l, d F Y');
+
+                            $isExpired = now()->isAfter($waktu);
+                            $colorClass = $isExpired ? 'text-red-600 font-bold' : 'text-emerald-600 font-semibold';
+                            $statusText = $isExpired ? ' (Sudah Berakhir)' : ' (Masih Berlaku)';
+
+                            return new HtmlString("<span class=\"{$colorClass}\">Batas Pengajuan: {$tanggal}{$statusText}</span>");
                         }
 
-                        return new HtmlString("Batas Pengajuan s.d <span class=\"font-medium\">{$tanggal}</span>");
+                        return new HtmlString('<span class="text-gray-400">Belum ditentukan oleh BI untuk periode ini.</span>');
                     }),
 
                 FileUpload::make('file_setoran')

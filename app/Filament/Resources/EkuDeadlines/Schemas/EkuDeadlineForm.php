@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\EkuDeadlines\Schemas;
 
+use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
@@ -13,25 +13,31 @@ class EkuDeadlineForm
     {
         return $schema
             ->components([
-                Select::make('periode')
-                    ->label('Periode (Tahun)')
-                    ->options(fn () => collect(range(date('Y'), date('Y') + 3))
-                        ->mapWithKeys(fn ($tahun) => [(string) $tahun => (string) $tahun])
-                        ->all())
-                    ->required()
-                    ->unique(ignoreRecord: true)
-                    ->native(false),
-
                 DatePicker::make('batas_waktu')
-                    ->label('Batas Pengajuan')
-                    ->helperText('Setelah tanggal ini, User Perbankan tidak bisa lagi membuat/mengunggah pengajuan EKU untuk periode ini.')
+                    ->label('Batas Pengajuan (Kalender)')
+                    ->helperText('Pilih tanggal batas akhir. Periode (Tahun) akan terisi secara otomatis.')
                     ->native(false)
                     ->displayFormat('d F Y')
-                    ->required(),
+                    ->required()
+                    ->live() // Membaca perubahan tanggal secara real-time
+                    ->afterStateUpdated(function ($state, callable $set) {
+                        // Jika tanggal dipilih, ambil tahunnya dan masukkan ke kolom periode
+                        if ($state) {
+                            $set('periode', Carbon::parse($state)->format('Y'));
+                        } else {
+                            $set('periode', null);
+                        }
+                    }),
+
+                TextInput::make('periode')
+                    ->label('Periode (Tahun)')
+                    ->required()
+                    ->readOnly() // Mengunci inputan agar tidak bisa diubah manual oleh Admin
+                    ->unique(ignoreRecord: true),
 
                 TextInput::make('keterangan')
                     ->label('Keterangan (opsional)')
-                    ->placeholder('Contoh: Batas pengajuan proyeksi EKU tahun 2027')
+                    ->placeholder('Contoh: Batas pengajuan proyeksi EKU')
                     ->maxLength(255)
                     ->columnSpanFull(),
             ])
