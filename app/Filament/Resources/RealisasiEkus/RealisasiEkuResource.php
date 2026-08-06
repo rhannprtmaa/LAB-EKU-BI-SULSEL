@@ -35,7 +35,7 @@ class RealisasiEkuResource extends Resource
     {
         $user = CurrentUser::get();
 
-        return (bool) ($user?->isAdminBi() || $user?->isUserBi());
+        return (bool) ($user?->isAdminBi() || $user?->isUserBi() || $user?->isUserPerbankan());
     }
 
     public static function canCreate(): bool
@@ -48,6 +48,7 @@ class RealisasiEkuResource extends Resource
         return false;
     }
 
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
@@ -55,6 +56,13 @@ class RealisasiEkuResource extends Resource
             ->withCount('realisasiHistory')
             ->withSum('realisasiHistory', 'total_setoran')
             ->withSum('realisasiHistory', 'total_penarikan');
+
+            $user = CurrentUser::get();
+        if ($user?->isUserPerbankan()) {
+            $query->where('bank_id', $user->bank_id);
+        }
+
+        return $query;
     }
 
     public static function infolist(Schema $schema): Schema
