@@ -194,9 +194,76 @@ class EkuTransaction extends Model
                 ->send();
         }
 
-        static::recalculateTotals($transaction->id);
+       static::recalculateTotals($transaction->id);
+        $transaction->terapkanBatasanBank();
 
         return ['setoran' => $jumlahSetoran, 'penarikan' => $jumlahPenarikan];
+    }
+
+    public function terapkanBatasanBank(): bool
+    {
+        $bank = $this->bank;
+
+        if (! $bank) {
+            return false;
+        }
+
+        $disesuaikan = false;
+        $ringkasan = [];
+
+        foreach (['Setoran' => 'batasan_setoran', 'Penarikan' => 'batasan_penarikan'] as $jenisFile => $kolomBatasan) {
+            $batasan = (float) ($bank->{$kolomBatasan} ?? 0);
+
+            if ($batasan <= 0) {
+                continue;
+            }
+
+            $totalSaatIni = (float) $this->details()
+                ->where('jenis_file', $jenisFile)
+                ->sum('subtotal');
+
+            if ($totalSaatIni <= $batasan) {
+                continue;
+            }
+
+            $faktor = $batasan / $totalSaatIni;
+
+            $kolomPecahan = [
+                'kertas_100k', 'kertas_50k', 'kertas_20k', 'kertas_10k', 'kertas_5k',
+                'kertas_2k', 'kertas_1k', 'logam_1k', 'logam_500', 'logam_200', 'logam_100',
+            ];
+
+            $this->details()->where('jenis_file', $jenisFile)->get()->each(function ($detail) use ($kolomPecahan, $faktor) {
+                foreach ($kolomPecahan as $kolom) {
+                    $detail->{$kolom} = round($detail->{$kolom} * $faktor, 2);
+                }
+
+                $detail->recalculateSubtotal();
+            });
+
+            $ringkasan[] = "{$jenisFile}: " . number_format($totalSaatIni, 0, ',', '.')
+                . ' -> ' . number_format($batasan, 0, ',', '.');
+
+            $disesuaikan = true;
+        }
+
+        if ($disesuaikan) {
+            static::recalculateTotals($this->id);
+            $this->refresh();
+
+            foreach (['Setoran', 'Penarikan'] as $jenisFile) {
+                $this->syncExcelValuesToFile($jenisFile);
+            }
+
+            Notification::make()
+                ->title('Pengajuan EKU otomatis disesuaikan dengan Batasan EKU')
+                ->body(($bank->name ?? 'Bank') . ' -- ' . implode(' | ', $ringkasan))
+                ->warning()
+                ->persistent()
+                ->send();
+        }
+
+        return $disesuaikan;
     }
 
     public static function recalculateTotals(int $transactionId): void
