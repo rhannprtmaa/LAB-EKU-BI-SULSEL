@@ -8,6 +8,7 @@ use App\Models\EkuDeadline;
 use App\Models\EkuTransaction;
 use App\Support\CurrentUser;
 use Carbon\Carbon;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -133,35 +134,55 @@ class EkuTransactionsTable
                 ViewAction::make()
                     ->label('Detail'),
 
+                // Tombol tambahan untuk menyesuaikan batasan bank secara otomatis (Khusus Admin BI)
+                Action::make('sesuaikan_batasan')
+                    ->label('Sesuaikan Batasan')
+                    ->icon('heroicon-o-scale')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Terapkan Batasan Bank')
+                    ->modalDescription('Apakah Anda ingin mencocokkan nominal transaksi ini dengan batas maksimal yang diizinkan untuk bank tersebut?')
+                    ->visible(fn (EkuTransaction $record) => $user?->isAdminBi())
+                    ->action(function (EkuTransaction $record) {
+                        $disesuaikan = $record->terapkanBatasanBank();
+
+                        if ($disesuaikan) {
+                            Notification::make()
+                                ->title('Berhasil Menyesuaikan Batasan')
+                                ->body('Nominal transaksi telah dipangkas sesuai dengan batasan maksimal bank.')
+                                ->success()
+                                ->send();
+                        } else {
+                            Notification::make()
+                                ->title('Tidak Ada Perubahan')
+                                ->body('Nominal transaksi ini masih berada di bawah atau sama dengan batas maksimal.')
+                                ->info()
+                                ->send();
+                        }
+                    }),
+
                 EditAction::make()
                     ->label('Edit')
                     ->modalHeading('Edit Pengajuan EKU')
                     ->modalWidth(Width::TwoExtraLarge)
                     ->visible(fn ($record) => EkuTransactionResource::canEdit($record))
-                    // --- AWAL TAMBAHAN: Validasi Deadline saat Edit ---
                     ->before(function (EditAction $action, EkuTransaction $record) {
-                        $user = CurrentUser::get();
+                        $currentUser = CurrentUser::get();
 
-                        // Pengecekan HANYA untuk User Perbankan
-                        if ($user?->isUserPerbankan()) {
-
+                        if ($currentUser?->isUserPerbankan()) {
                             $deadline = EkuDeadline::where('periode', $record->periode)->first();
 
-                            // Jika deadline ada dan waktu sekarang melebihi batas waktu
                             if ($deadline && now()->isAfter($deadline->batas_waktu)) {
-
                                 Notification::make()
                                     ->danger()
                                     ->title('Akses Ditolak!')
                                     ->body("Waktu pengeditan / revisi EKU untuk periode {$record->periode} telah berakhir pada " . Carbon::parse($deadline->batas_waktu)->translatedFormat('d F Y H:i') . ".")
                                     ->send();
 
-                                // Hentikan aksi edit
                                 $action->halt();
                             }
                         }
                     }),
-                    // --- AKHIR TAMBAHAN ---
 
                 DeleteAction::make()
                     ->visible(fn ($record) => EkuTransactionResource::canDelete($record)),

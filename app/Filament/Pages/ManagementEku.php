@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Imports\BankLimitImport;
 use App\Models\Bank;
 use App\Models\EkuDeadline;
 use App\Models\EkuTemplate;
@@ -14,7 +15,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
-
+use Maatwebsite\Excel\Facades\Excel;
 
 class ManagementEku extends Page implements HasForms
 {
@@ -34,20 +35,14 @@ class ManagementEku extends Page implements HasForms
     }
 
     public $tanggal_deadline;
-
     public $keterangan_deadline;
-
-    // Batasan EKU per bank: dikelola per baris lewat array ini,
-    // key = id bank, value = ['batasan_setoran' => ..., 'batasan_penarikan' => ...]
     public array $batasanBank = [];
-
     public ?array $data = [];
 
     public function mount(): void
     {
         $deadline = EkuDeadline::current();
 
-        // Format 'Y-m-d' murni (tanpa jam) supaya cocok dengan <input type="date">
         $this->tanggal_deadline = $deadline?->batas_waktu?->format('Y-m-d');
         $this->keterangan_deadline = $deadline?->keterangan;
 
@@ -90,6 +85,20 @@ class ManagementEku extends Page implements HasForms
                             ])
                             ->maxSize(5120),
                     ]),
+
+                // Form untuk Upload File Excel Batasan Bank
+                Section::make('Import Batasan EKU per Bank (Excel)')
+                    ->schema([
+                        FileUpload::make('file_batasan_bank')
+                            ->label('File Excel Batasan Bank')
+                            ->disk('public')
+                            ->directory('temp-excel')
+                            ->acceptedFileTypes([
+                                'application/vnd.ms-excel',
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            ])
+                            ->maxSize(5120),
+                    ]),
             ])
             ->statePath('data');
     }
@@ -125,11 +134,6 @@ class ManagementEku extends Page implements HasForms
             ->send();
     }
 
-    /**
-     * Simpan batasan Setoran/Penarikan untuk satu bank. Kalau ada pengajuan
-     * EKU bank ini yang nilainya sudah melebihi batasan baru, otomatis
-     * disesuaikan (lihat EkuTransaction::terapkanBatasanBank()).
-     */
     public function simpanBatasanBank(int $bankId): void
     {
         $input = $this->batasanBank[$bankId] ?? [];
@@ -146,8 +150,6 @@ class ManagementEku extends Page implements HasForms
             'batasan_penarikan' => ($input['batasan_penarikan'] ?? null) !== '' ? ($input['batasan_penarikan'] ?? null) : null,
         ]);
 
-        // Terapkan batasan baru ke pengajuan EKU bank ini -- kalau ada yang
-        // melebihi, otomatis disesuaikan (di-scale turun) supaya sesuai batasan.
         $jumlahDisesuaikan = $bank->ekuTransactions()
             ->get()
             ->reduce(function (int $carry, $transaksi) {
@@ -161,6 +163,28 @@ class ManagementEku extends Page implements HasForms
                 : null)
             ->success()
             ->send();
+    }
+
+    // Fungsi untuk memproses file Excel yang di-upload
+    public function importBatasanBank(): void
+    {
+        $state = $this->form->getState();
+
+        if (empty($state['file_batasan_bank'])) {
+            Notification::make()->title('Silakan unggah file Excel terlebih dahulu')->danger()->send();
+            return;
+        }
+
+        $filePath = storage_path('app/public/' . $state['file_batasan_bank']);
+
+        Excel::import(new BankLimitImport, $filePath);
+
+        Notification::make()
+            ->title('Batasan EKU per Bank berhasil diimpor!')
+            ->success()
+            ->send();
+
+        $this->mount();
     }
 
     public function save(): void

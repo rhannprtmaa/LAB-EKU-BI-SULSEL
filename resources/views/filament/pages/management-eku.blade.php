@@ -42,10 +42,6 @@
                     <p class="text-xs text-gray-500 dark:text-gray-400">Tanggal terakhir bank boleh mengajukan/mengubah data EKU.</p>
                 </div>
 
-                {{-- PERBAIKAN: form ini sebelumnya salah memanggil "save" (punya
-                     Template Kerja EKU), jadi walau muncul notif sukses, data
-                     tidak pernah benar-benar tersimpan. Sekarang memanggil
-                     "simpanDeadline" yang benar. --}}
                 <form wire:submit.prevent="simpanDeadline" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Tanggal Batas Pengajuan</label>
@@ -89,7 +85,6 @@
 
                                     if ($rawDate) {
                                         try {
-                                            // Sengaja tanpa jam -- cuma tanggal.
                                             $formattedDate = \Carbon\Carbon::parse($rawDate)->translatedFormat('d F Y');
                                         } catch (\Exception $e) {
                                             $formattedDate = (string) $rawDate;
@@ -127,11 +122,32 @@
             </div>
         </div>
 
-        {{-- TAB 2: BATASAN EKU PER BANK (BARU) --}}
+        {{-- TAB 2: BATASAN EKU PER BANK (DENGAN TAMBAHAN UPLOAD EXCEL) --}}
         <div x-show="activeTab === 'batasan'" class="space-y-6">
+
+            {{-- TAMBAHAN: FORM UPLOAD EXCEL BATASAN BANK --}}
             <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
                 <div class="mb-4 pb-3 border-b border-gray-100 dark:border-gray-700">
-                    <h2 class="text-lg font-bold text-gray-900 dark:text-white">Batasan EKU per Bank</h2>
+                    <h2 class="text-lg font-bold text-gray-900 dark:text-white">Import Batasan EKU per Bank (Excel)</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Unggah file Excel berisi kolom kode/nama bank beserta batasan setoran &amp; penarikan.</p>
+                </div>
+
+                <form wire:submit.prevent="importBatasanBank" class="space-y-4">
+                    {{ $this->form }}
+
+                    <div class="flex justify-end pt-2">
+                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-6 rounded-lg transition duration-200 shadow-sm flex items-center space-x-2 text-sm">
+                            <x-heroicon-m-arrow-up-tray class="w-4 h-4" />
+                            <span>Proses Import Excel</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {{-- TABEL PENGATURAN MANUAL PER BANK --}}
+            <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                <div class="mb-4 pb-3 border-b border-gray-100 dark:border-gray-700">
+                    <h2 class="text-lg font-bold text-gray-900 dark:text-white">Pengaturan Manual Batasan EKU per Bank</h2>
                     <p class="text-xs text-gray-500 dark:text-gray-400">
                         Batas maksimum total Setoran/Penarikan yang boleh diajukan tiap bank. Kalau pengajuan
                         bank melebihi angka ini, sistem otomatis menyesuaikan (menurunkan) nilai di semua bulan &amp;
