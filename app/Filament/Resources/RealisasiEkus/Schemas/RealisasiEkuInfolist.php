@@ -6,6 +6,7 @@ use App\Models\EkuTransaction;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Grid;
 
 class RealisasiEkuInfolist
 {
@@ -30,69 +31,58 @@ class RealisasiEkuInfolist
                     ]),
 
                 Section::make('Ringkasan Realisasi & Deviasi')
-                    ->description('Realisasi memakai entri paling baru dari riwayat input di bawah -- kalau ada input baru, ringkasan ini otomatis mengikuti.')
-                    ->columns(3)
-                    ->schema([
-                        TextEntry::make('total_setoran')
-                            ->label('Forecast Setoran')
-                            ->money('IDR')
-                            ->icon('heroicon-o-arrow-down-circle')
-                            ->color('gray'),
-                        TextEntry::make('realisasiTerbaru.total_setoran')
-                            ->label('Realisasi Setoran')
-                            ->money('IDR')
-                            ->placeholder('Belum ada realisasi')
-                            ->color('success'),
-                        TextEntry::make('deviasi_setoran_display')
-                            ->label('Deviasi Setoran')
-                            ->state(function (EkuTransaction $record) {
-                                if (! $record->realisasiTerbaru) {
-                                    return null;
-                                }
+    ->schema([
+        Grid::make(2)->schema([
 
-                                return (float) $record->total_setoran - (float) $record->realisasiTerbaru->total_setoran;
-                            })
-                            ->money('IDR')
-                            ->placeholder('-')
-                            ->color(fn ($state) => $state === null ? 'gray' : ($state > 0 ? 'warning' : ($state < 0 ? 'info' : 'success'))),
+            // --- BAGIAN SETORAN ---
+            TextEntry::make('total_akumulasi_setoran')
+                ->label('Total Realisasi Setoran')
+                ->state(function (EkuTransaction $record) {
+                    // Ambil dari fungsi hitungDeviasi yang sudah kita perbaiki
+                    $data = collect($record->hitungDeviasi());
+                    return $data->where('jenis', 'Setoran')->sum('realisasi');
+                })
+                ->money('IDR', locale: 'id')
+                ->color('success')
+                ->weight('bold'),
 
-                        TextEntry::make('total_penarikan')
-                            ->label('Forecast Penarikan')
-                            ->money('IDR')
-                            ->icon('heroicon-o-arrow-up-circle')
-                            ->color('gray'),
-                        TextEntry::make('realisasiTerbaru.total_penarikan')
-                            ->label('Realisasi Penarikan')
-                            ->money('IDR')
-                            ->placeholder('Belum ada realisasi')
-                            ->color('danger'),
-                        TextEntry::make('deviasi_penarikan_display')
-                            ->label('Deviasi Penarikan')
-                            ->state(function (EkuTransaction $record) {
-                                if (! $record->realisasiTerbaru) {
-                                    return null;
-                                }
+            TextEntry::make('total_deviasi_setoran')
+                ->label('Deviasi Setoran (Sisa/Over)')
+                ->state(function (EkuTransaction $record) {
+                    $data = collect($record->hitungDeviasi());
+                    return $data->where('jenis', 'Setoran')->sum('deviasi');
+                })
+                ->formatStateUsing(function ($state) {
+                    $prefix = $state < 0 ? '(Mines) Rp ' : 'Rp ';
+                    return $prefix . number_format(abs($state), 0, ',', '.');
+                })
+                ->color(fn ($state) => $state < 0 ? 'danger' : 'warning'),
 
-                                return (float) $record->total_penarikan - (float) $record->realisasiTerbaru->total_penarikan;
-                            })
-                            ->money('IDR')
-                            ->placeholder('-')
-                            ->color(fn ($state) => $state === null ? 'gray' : ($state > 0 ? 'warning' : ($state < 0 ? 'info' : 'success'))),
+            // --- BAGIAN PENARIKAN ---
+            TextEntry::make('total_akumulasi_penarikan')
+                ->label('Total Realisasi Penarikan')
+                ->state(function (EkuTransaction $record) {
+                    $data = collect($record->hitungDeviasi());
+                    return $data->where('jenis', 'Penarikan')->sum('realisasi');
+                })
+                ->money('IDR', locale: 'id')
+                ->color('success')
+                ->weight('bold'),
 
-                        TextEntry::make('realisasiTerbaru.inputBy.name')
-                            ->label('Realisasi Terakhir Diinput oleh')
-                            ->icon('heroicon-o-user')
-                            ->placeholder('-'),
-                        TextEntry::make('realisasiTerbaru.input_at')
-                            ->label('Tanggal Input Terakhir')
-                            ->icon('heroicon-o-clock')
-                            ->dateTime('d M Y H:i')
-                            ->placeholder('-'),
-                        TextEntry::make('realisasiHistory')
-                            ->label('Jumlah Riwayat Input')
-                            ->state(fn (EkuTransaction $record) => $record->realisasiHistory()->count() . 'x')
-                            ->icon('heroicon-o-clock'),
-                    ]),
+            TextEntry::make('total_deviasi_penarikan')
+                ->label('Deviasi Penarikan (Sisa/Over)')
+                ->state(function (EkuTransaction $record) {
+                    $data = collect($record->hitungDeviasi());
+                    return $data->where('jenis', 'Penarikan')->sum('deviasi');
+                })
+                ->formatStateUsing(function ($state) {
+                    $prefix = $state < 0 ? '(Mines) Rp ' : 'Rp ';
+                    return $prefix . number_format(abs($state), 0, ',', '.');
+                })
+                ->color(fn ($state) => $state < 0 ? 'danger' : 'warning'),
+
+        ])
+    ])
             ]);
     }
 }

@@ -31,7 +31,7 @@
                             @php
                                 $isOver = $row['deviasi'] < 0;
                                 $isSisa = $row['deviasi'] > 0;
-                                
+
                                 if ($isSisa) {
                                     $status = ['label' => 'Sisa Target', 'color' => 'amber'];
                                 } elseif ($isOver) {

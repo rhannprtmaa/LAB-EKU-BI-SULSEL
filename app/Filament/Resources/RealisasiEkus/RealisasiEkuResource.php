@@ -52,7 +52,9 @@ class RealisasiEkuResource extends Resource
     {
         return parent::getEloquentQuery()
             ->where('status', EkuTransaction::STATUS_DISETUJUI)
-            ->withCount('realisasiHistory');
+            ->withCount('realisasiHistory')
+            ->withSum('realisasiHistory', 'total_setoran')
+            ->withSum('realisasiHistory', 'total_penarikan');
     }
 
     public static function infolist(Schema $schema): Schema
@@ -77,19 +79,55 @@ class RealisasiEkuResource extends Resource
                     ->label('Forecast Setoran')
                     ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.'),
 
+                 TextColumn::make('realisasi_history_sum_total_setoran')
+            ->label('Realisasi Setoran (Total)')
+            ->html() // Mengizinkan render HTML (badge Tailwind)
+            ->formatStateUsing(function (\App\Models\EkuTransaction $record, $state) {
+                $forecast = (float) $record->total_setoran;
+                $realisasi = (float) ($state ?? 0);
+                $nominal = 'Rp ' . number_format($realisasi, 0, ',', '.');
+
+                // Logika penentuan warna badge
+                if ($realisasi == 0) {
+                    $badge = '<span class="ml-3 px-3 py-0.3 rounded-md text-[10px] font-bold bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">Belum Ada</span>';
+                } elseif ($realisasi > $forecast) {
+                    $badge = '<span class="ml-3 px-3 py-0.3 rounded-md text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400">Over</span>';
+                } elseif ($realisasi == $forecast) {
+                    $badge = '<span class="ml-3 px-3 py-0.3 rounded-md text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400">Sesuai</span>';
+                } else {
+                    $badge = '<span class="ml-3 px-3 py-0.3 rounded-md text-[10px] font-bold bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400">Kurang</span>';
+                }
+
+                // Return gabungan nominal dan badge sejajar
+                return new \Illuminate\Support\HtmlString("<div class='flex items-center whitespace-nowrap'>{$nominal} {$badge}</div>");
+            }),
+
                 TextColumn::make('total_penarikan')
                     ->label('Forecast Penarikan')
                     ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.'),
 
-                TextColumn::make('realisasiTerbaru.total_setoran')
-                    ->label('Realisasi Setoran')
-                    ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.')
-                    ->placeholder('Belum ada'),
+                    TextColumn::make('realisasi_history_sum_total_penarikan')
+            ->label('Realisasi Penarikan (Total)')
+            ->html() // Mengizinkan render HTML (badge Tailwind)
+            ->formatStateUsing(function (\App\Models\EkuTransaction $record, $state) {
+                $forecast = (float) $record->total_penarikan;
+                $realisasi = (float) ($state ?? 0);
+                $nominal = 'Rp ' . number_format($realisasi, 0, ',', '.');
 
-                TextColumn::make('realisasiTerbaru.total_penarikan')
-                    ->label('Realisasi Penarikan')
-                    ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.')
-                    ->placeholder('Belum ada'),
+                // Logika penentuan warna badge
+                if ($realisasi == 0) {
+                    $badge = '<span class="ml-2 px-2 py-0.5 rounded-md text-[11px] font-bold bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">Belum Ada</span>';
+                } elseif ($realisasi > $forecast) {
+                    $badge = '<span class="ml-2 px-2 py-0.5 rounded-md text-[11px] font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400">Over</span>';
+                } elseif ($realisasi == $forecast) {
+                    $badge = '<span class="ml-2 px-2 py-0.5 rounded-md text-[11px] font-bold bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400">Sesuai</span>';
+                } else {
+                    $badge = '<span class="ml-2 px-2 py-0.5 rounded-md text-[11px] font-bold bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400">Kurang</span>';
+                }
+
+                // Return gabungan nominal dan badge sejajar
+                return new \Illuminate\Support\HtmlString("<div class='flex items-center whitespace-nowrap'>{$nominal} {$badge}</div>");
+            }),
 
                 TextColumn::make('realisasi_history_count')
                     ->label('Riwayat Input')
@@ -113,7 +151,7 @@ class RealisasiEkuResource extends Resource
                     ->label('Input Realisasi')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->color('success')
-                    ->visible(fn (EkuTransaction $record) => (bool) CurrentUser::get()?->isUserBi())    
+                    ->visible(fn (EkuTransaction $record) => (bool) CurrentUser::get()?->isUserBi())
                     ->form([
                         FileUpload::make('file_setoran')
                             ->label('Upload File Excel Realisasi Setoran')

@@ -350,8 +350,6 @@ class EkuTransaction extends Model
     {
         return $this->hasMany(EkuTransactionRealisasi::class)->latest('input_at');
     }
-
-    // Entri realisasi PALING BARU -> dipakai untuk ringkasan & perhitungan deviasi.
     public function realisasiTerbaru(): HasOne
     {
         return $this->hasOne(EkuTransactionRealisasi::class)->latestOfMany('input_at');
@@ -367,10 +365,9 @@ class EkuTransaction extends Model
      */
     public function hitungDeviasi(): array
     {
-        // 1. Ambil semua target Forecast
-        $forecasts = $this->details; 
-        
-        // 2. Ambil KESELURUHAN (Akumulasi) file realisasi, BUKAN hanya yang terbaru
+        $forecasts = $this->details;
+
+        // PASTIKAN menggunakan SUM dari SEMUA EkuTransactionRealisasiDetail
         $realisasiDetails = \App\Models\EkuTransactionRealisasiDetail::whereHas('realisasi', function ($q) {
             $q->where('eku_transaction_id', $this->id);
         })
@@ -380,7 +377,6 @@ class EkuTransaction extends Model
 
         $hasil = [];
 
-        // 3. Susun data Forecast sebagai baseline
         foreach ($forecasts as $f) {
             $key = $f->bulan . '_' . $f->jenis_file;
             $hasil[$key] = [
@@ -388,38 +384,31 @@ class EkuTransaction extends Model
                 'jenis' => $f->jenis_file,
                 'forecast' => $f->subtotal,
                 'realisasi' => 0,
-                'deviasi' => $f->subtotal, // Default sisa deviasi = forecast
-                'persen_deviasi' => -100 
+                'deviasi' => $f->subtotal,
+                'persen_deviasi' => -100
             ];
         }
 
-        // 4. Masukkan Akumulasi Realisasi dan Hitung Deviasinya
         foreach ($realisasiDetails as $r) {
             $key = $r->bulan . '_' . $r->jenis_file;
-            
-            // Jaga-jaga jika ada realisasi tapi tidak ada forecast-nya
+
             if (!isset($hasil[$key])) {
                 $hasil[$key] = [
-                    'bulan' => $r->bulan,
-                    'jenis' => $r->jenis_file,
-                    'forecast' => 0,
-                    'realisasi' => 0,
-                    'deviasi' => 0,
-                    'persen_deviasi' => 0
+                    'bulan' => $r->bulan, 'jenis' => $r->jenis_file,
+                    'forecast' => 0, 'realisasi' => 0, 'deviasi' => 0, 'persen_deviasi' => 0
                 ];
             }
 
-            // AKUMULASI (Tambah terus jika ada file baru)
+            // AKUMULASI NILAI REALISASI
             $hasil[$key]['realisasi'] += $r->total_realisasi;
-            
+
             $forecast = $hasil[$key]['forecast'];
             $realisasi = $hasil[$key]['realisasi'];
-            $deviasi = $forecast - $realisasi;
-            
-            $hasil[$key]['deviasi'] = $deviasi;
-            
+
+            // Hitung Deviasi (Sisa/Mines)
+            $hasil[$key]['deviasi'] = $forecast - $realisasi;
+
             if ($forecast > 0) {
-                // Menghitung persentase kelebihan / kekurangannya
                 $hasil[$key]['persen_deviasi'] = round((($realisasi - $forecast) / $forecast) * 100, 1);
             } else {
                 $hasil[$key]['persen_deviasi'] = $realisasi > 0 ? 100 : 0;

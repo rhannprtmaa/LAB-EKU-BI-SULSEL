@@ -38,7 +38,7 @@ class Dashboard extends BaseDashboard implements HasForms
         ]);
     }
 
-    public function form(Schema $schema): Schema
+public function form(Schema $schema): Schema
     {
         return $schema
             ->components([
@@ -47,8 +47,7 @@ class Dashboard extends BaseDashboard implements HasForms
                     ->live()
                     ->options([
                         'forecast_eku' => 'Forecast EKU',
-                        'realisasi_eku' => 'Realisasi EKU',
-                        'deviasi_forecast' => 'Deviasi EKU',
+                        'realisasi_deviasi' => 'Realisasi & Deviasi EKU', // DIGABUNG DI SINI
                         'tukab' => 'Tukab (segera hadir)',
                     ]),
 
@@ -67,7 +66,6 @@ class Dashboard extends BaseDashboard implements HasForms
             ->columns(3)
             ->statePath('data');
     }
-
     public function isInternalBi(): bool
     {
         $user = CurrentUser::get();
@@ -304,18 +302,20 @@ class Dashboard extends BaseDashboard implements HasForms
     protected function realisasiChartData(): array
     {
         $approvedIds = (clone $this->scopedTransactionsQuery())
-            ->where('status', EkuTransaction::STATUS_DISETUJUI)
+            ->where('status', \App\Models\EkuTransaction::STATUS_DISETUJUI)
             ->pluck('id');
 
         $totalUpb = 0.0;
         $totalUpk = 0.0;
 
-        EkuTransaction::query()
+        \App\Models\EkuTransaction::query()
             ->whereIn('id', $approvedIds)
-            ->with('realisasiTerbaru.details')
+            // UBAH INI: Ambil SEMUA history, bukan cuma yang terbaru
+            ->with('realisasiHistory.details')
             ->get()
-            ->each(function (EkuTransaction $trx) use (&$totalUpb, &$totalUpk) {
-                if ($realisasi = $trx->realisasiTerbaru) {
+            ->each(function (\App\Models\EkuTransaction $trx) use (&$totalUpb, &$totalUpk) {
+                // UBAH INI: Looping semua history yang ada
+                foreach ($trx->realisasiHistory as $realisasi) {
                     foreach ($realisasi->details as $detail) {
                         $totalUpb += (float) ($detail->kertas_100k + $detail->kertas_50k);
                         $totalUpk += (float) ($detail->kertas_20k + $detail->kertas_10k + $detail->kertas_5k + $detail->kertas_2k + $detail->kertas_1k + $detail->logam_1k + $detail->logam_500 + $detail->logam_200 + $detail->logam_100);
@@ -326,13 +326,9 @@ class Dashboard extends BaseDashboard implements HasForms
         return [
             'labels' => ['UPB (100k & 50k)', 'UPK (≤ 20k & Logam)'],
             'values' => [$totalUpb, $totalUpk],
-            'colors' => ['#3b82f6', '#10b981'], // Biru dan Hijau
+            'colors' => ['#3b82f6', '#10b981'],
         ];
     }
-
-    /**
-     * DEVIASI CHART: Under-Realisasi vs Over-Realisasi
-     */
     protected function deviasiChartData(): array
     {
         $approvedIds = (clone $this->scopedTransactionsQuery())
