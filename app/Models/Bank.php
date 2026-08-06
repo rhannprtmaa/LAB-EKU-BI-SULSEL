@@ -7,7 +7,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Bank extends Model
 {
-    protected $fillable = ['code', 'name', 'is_active', 'batasan_setoran', 'batasan_penarikan'];
+    protected $fillable = [
+        'code', 'name', 'is_active',
+        'batasan_setoran', 'batasan_penarikan',
+        'file_batasan_setoran', 'file_batasan_setoran_nama_asli',
+        'file_batasan_penarikan', 'file_batasan_penarikan_nama_asli',
+    ];
 
     public function users(): HasMany
     {
