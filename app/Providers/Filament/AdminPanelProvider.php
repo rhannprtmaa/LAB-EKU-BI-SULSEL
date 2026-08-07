@@ -23,6 +23,7 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Filament\Enums\ThemeMode;
 use Filament\FontProviders\GoogleFontProvider;
+use App\Filament\Pages\ViewBatasanBank;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -57,6 +58,7 @@ class AdminPanelProvider extends PanelProvider
                 Dashboard::class,
                 ManagementEku::class,
                 KnowledgeCenter::class,
+                ViewBatasanBank::class,
             ])
 
             // --- Middleware Configuration ---

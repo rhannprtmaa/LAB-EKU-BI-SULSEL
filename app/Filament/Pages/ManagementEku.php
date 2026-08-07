@@ -16,7 +16,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
+use App\Filament\Pages\ViewBatasanBank;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -83,12 +83,10 @@ class ManagementEku extends Page implements HasForms, HasTable
                 // KOLOM UPLOAD FILE BATASAN SETORAN
                 TextColumn::make('file_batasan_setoran')
                     ->label('File Batasan Setoran')
-                    // Mengubah tampilan kolom menjadi Tombol Upload
                     ->getStateUsing(fn ($record) => $record->file_batasan_setoran ? 'Ubah File' : 'Upload Excel')
                     ->badge()
                     ->color(fn ($record) => $record->file_batasan_setoran ? 'success' : 'danger')
                     ->icon('heroicon-o-arrow-up-tray')
-                    // Membuat kolom bisa diklik dan memunculkan pop-up modal
                     ->action(
                         Action::make('upload_setoran')
                             ->modalHeading(fn (Bank $record) => 'Upload File Batasan Setoran - ' . $record->name)
@@ -103,7 +101,6 @@ class ManagementEku extends Page implements HasForms, HasTable
                                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                                     ])
                                     ->maxSize(5120)
-                                    // Menampilkan file yang sudah ada (jika ada)
                                     ->default(fn (Bank $record) => $record->file_batasan_setoran)
                             ])
                             ->action(function (Bank $record, array $data) {
@@ -146,14 +143,13 @@ class ManagementEku extends Page implements HasForms, HasTable
                     ),
             ])
             ->actions([
-                ViewAction::make()
-                    ->label('Detail')
-                    ->form([
-                        TextInput::make('batasan_setoran')->label('Batasan Setoran (Rp)')->numeric(),
-                        TextInput::make('batasan_penarikan')->label('Batasan Penarikan (Rp)')->numeric(),
-                        FileUpload::make('file_batasan_setoran')->label('File Batasan Setoran')->disk('public'),
-                        FileUpload::make('file_batasan_penarikan')->label('File Batasan Penarikan')->disk('public'),
-                    ]),
+                Action::make('detail')
+                ->label('Detail')
+                ->icon('heroicon-o-eye')
+                ->color('gray')
+                ->url(fn (Bank $record): string => ViewBatasanBank::getUrl([
+                    'record' => $record->id
+                ])),
 
                 EditAction::make()
                     ->label('Edit')
@@ -189,7 +185,6 @@ class ManagementEku extends Page implements HasForms, HasTable
             ]);
     }
 
-    // --- FORM TEMPLATE KERJA EKU ---
     public function form(Schema $schema): Schema
     {
         return $schema
