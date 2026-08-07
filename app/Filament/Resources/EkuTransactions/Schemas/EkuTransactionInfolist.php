@@ -115,30 +115,15 @@ class EkuTransactionInfolist
                         static::fileEntry('file_lampiran', 'File Lampiran', 'gray', 'heroicon-o-paper-clip', 'file_lampiran_nama_asli'),
                     ]),
 
-                Section::make('Ringkasan Realisasi & Deviasi EKU')
+                Section::make('Ringkasan Informasi Pengajuan EKU')
                     ->columns(3)
                     ->schema([
                         TextEntry::make('total_setoran')
                             ->label('Pengajuan Setoran')
                             ->money('IDR'),
-                        TextEntry::make('total_realisasi_setoran')
-                            ->label('Realisasi Setoran')
-                            ->money('IDR'),
-                        TextEntry::make('deviasi_setoran')
-                            ->label('Deviasi Setoran')
-                            ->money('IDR')
-                            ->color(fn ($state) => $state < 0 ? 'danger' : 'success'),
-
                         TextEntry::make('total_penarikan')
                             ->label('Pengajuan Penarikan')
                             ->money('IDR'),
-                        TextEntry::make('total_realisasi_penarikan')
-                            ->label('Realisasi Penarikan')
-                            ->money('IDR'),
-                        TextEntry::make('deviasi_penarikan')
-                            ->label('Deviasi Penarikan')
-                            ->money('IDR')
-                            ->color(fn ($state) => $state < 0 ? 'danger' : 'success'),
                     ]),
             ]);
     }

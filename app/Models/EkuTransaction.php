@@ -195,7 +195,6 @@ class EkuTransaction extends Model
         }
 
        static::recalculateTotals($transaction->id);
-        $transaction->terapkanBatasanBank();
 
         return ['setoran' => $jumlahSetoran, 'penarikan' => $jumlahPenarikan];
     }

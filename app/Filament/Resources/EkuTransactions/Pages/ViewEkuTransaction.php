@@ -19,7 +19,6 @@ class ViewEkuTransaction extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            // --- TOMBOL SESUAIKAN BATASAN (KHUSUS USER BI) ---
             Action::make('sesuaikan_batasan')
                 ->label('Sesuaikan Batasan')
                 ->color('warning')
@@ -30,11 +29,11 @@ class ViewEkuTransaction extends ViewRecord
                 ->modalWidth(Width::Medium)
                 ->modalHeading('Sesuaikan Batasan EKU')
                 ->modalDescription('Sistem akan memeriksa dan menyesuaikan nilai pengajuan bank ini secara otomatis agar pas dengan batasan bank yang telah diatur di Management EKU.')
-                ->action(function (): void {
-                    // Memanggil fungsi penyesuaian dari model EkuTransaction
+                ->action(function () {
+                    // 1. Memanggil fungsi penyesuaian dari model EkuTransaction
                     $disesuaikan = $this->record->terapkanBatasanBank();
 
-                    // Jika pengajuan masih di bawah batasan dan tidak ada yang diubah
+                    // 2. Jika pengajuan masih di bawah batasan dan tidak ada yang diubah
                     if (!$disesuaikan) {
                         Notification::make()
                             ->title('Tidak Ada Penyesuaian')
@@ -42,6 +41,10 @@ class ViewEkuTransaction extends ViewRecord
                             ->info()
                             ->send();
                     }
+
+                    // 3. FORCE REFRESH HALAMAN:
+                    // Agar tabel rincian EKU dan Ringkasan Total langsung berubah otomatis!
+                    return redirect(request()->header('Referer'));
                 }),
 
             Action::make('approve')
