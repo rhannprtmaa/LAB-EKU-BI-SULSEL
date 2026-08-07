@@ -134,33 +134,6 @@ class EkuTransactionsTable
                 ViewAction::make()
                     ->label('Detail'),
 
-                // Tombol tambahan untuk menyesuaikan batasan bank secara otomatis (Khusus Admin BI)
-                Action::make('sesuaikan_batasan')
-                    ->label('Sesuaikan Batasan')
-                    ->icon('heroicon-o-scale')
-                    ->color('warning')
-                    ->requiresConfirmation()
-                    ->modalHeading('Terapkan Batasan Bank')
-                    ->modalDescription('Apakah Anda ingin mencocokkan nominal transaksi ini dengan batas maksimal yang diizinkan untuk bank tersebut?')
-                    ->visible(fn (EkuTransaction $record) => $user?->isAdminBi())
-                    ->action(function (EkuTransaction $record) {
-                        $disesuaikan = $record->terapkanBatasanBank();
-
-                        if ($disesuaikan) {
-                            Notification::make()
-                                ->title('Berhasil Menyesuaikan Batasan')
-                                ->body('Nominal transaksi telah dipangkas sesuai dengan batasan maksimal bank.')
-                                ->success()
-                                ->send();
-                        } else {
-                            Notification::make()
-                                ->title('Tidak Ada Perubahan')
-                                ->body('Nominal transaksi ini masih berada di bawah atau sama dengan batas maksimal.')
-                                ->info()
-                                ->send();
-                        }
-                    }),
-
                 EditAction::make()
                     ->label('Edit')
                     ->modalHeading('Edit Pengajuan EKU')
