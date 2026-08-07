@@ -9,24 +9,48 @@
             </a>
         </div>
 
-        {{-- KOTAK INFORMASI TOTAL BATASAN --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="p-6 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-white/10">
-                <div class="flex items-center justify-between mb-2">
-                    <p class="text-sm font-semibold text-gray-500 dark:text-gray-400">Total Batasan Setoran</p>
-                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800">Setoran</span>
-                </div>
-                <p class="text-3xl font-bold text-emerald-600 dark:text-emerald-400">Rp {{ number_format($bank->batasan_setoran ?? 0, 0, ',', '.') }}</p>
-            </div>
+       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-            <div class="p-6 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-white/10">
-                <div class="flex items-center justify-between mb-2">
-                    <p class="text-sm font-semibold text-gray-500 dark:text-gray-400">Total Batasan Penarikan</p>
-                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">Penarikan</span>
-                </div>
-                <p class="text-3xl font-bold text-red-600 dark:text-red-400">Rp {{ number_format($bank->batasan_penarikan ?? 0, 0, ',', '.') }}</p>
-            </div>
+    {{-- TOTAL BATASAN SETORAN --}}
+    <div class="p-6 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-white/10">
+        <div class="flex items-center justify-between mb-2">
+            <p class="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                Total Batasan Setoran
+            </p>
+
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold
+                bg-green-50 text-green-600 border border-green-200
+                dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
+                Setoran
+            </span>
         </div>
+
+        <p class="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+            Rp {{ number_format($bank->batasan_setoran ?? 0, 0, ',', '.') }}
+        </p>
+    </div>
+
+
+    {{-- TOTAL BATASAN PENARIKAN --}}
+    <div class="p-6 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-white/10">
+        <div class="flex items-center justify-between mb-2">
+            <p class="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                Total Batasan Penarikan
+            </p>
+
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold
+                bg-blue-50 text-blue-600 border border-blue-200
+                dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                Penarikan
+            </span>
+        </div>
+
+        <p class="text-3xl font-bold text-blue-600 dark:text-blue-400">
+            Rp {{ number_format($bank->batasan_penarikan ?? 0, 0, ',', '.') }}
+        </p>
+    </div>
+
+</div>
 
         @php
             $pecahanKeys = ['kertas_100k', 'kertas_50k', 'kertas_20k', 'kertas_10k', 'kertas_5k', 'kertas_2k', 'kertas_1k', 'logam_1k', 'logam_500', 'logam_200', 'logam_100'];
@@ -143,10 +167,10 @@
                                 <td class="px-5 py-4 font-medium text-gray-900 dark:text-white">{{ $row['bulan'] ?? '-' }}</td>
                                 <td class="px-5 py-4">
                                     @if($row['jenis'] === 'Setoran')
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold border bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800">
-                                            Setoran
-                                        </span>
-                                    @else
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold border bg-green-50 text-green-600 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
+                                        Setoran
+                                    </span>
+                                @else
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold border bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
                                             Penarikan
                                         </span>
@@ -163,6 +187,47 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+
+            {{-- RINGKASAN TOTAL (style disamakan dengan Rincian Proyeksi EKU Bulanan) --}}
+            @php($ringkasan = $this->getRingkasan())
+
+            <div class="border-t border-gray-200 dark:border-white/10 px-5 py-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Ringkasan Total</p>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <div>
+                        <p class="text-xs text-gray-500">Total Setoran</p>
+                        <p class="text-lg font-bold" style="color:#054177;">Rp {{ number_format($ringkasan['totalSetoran'], 0, ',', '.') }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Total Penarikan</p>
+                        <p class="text-lg font-bold" style="color:#054177;">Rp {{ number_format($ringkasan['totalPenarikan'], 0, ',', '.') }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Grand Total (Setoran + Penarikan)</p>
+                        <p class="text-lg font-bold text-emerald-600">Rp {{ number_format($ringkasan['grandTotal'], 0, ',', '.') }}</p>
+                    </div>
+
+                    <div>
+                        <p class="text-xs text-gray-500">Total UK (Uang Kertas)</p>
+                        <p class="text-lg font-bold text-gray-700 dark:text-gray-200">Rp {{ number_format($ringkasan['totalUK'], 0, ',', '.') }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Total UL (Uang Logam)</p>
+                        <p class="text-lg font-bold text-gray-700 dark:text-gray-200">Rp {{ number_format($ringkasan['totalUL'], 0, ',', '.') }}</p>
+                    </div>
+                    <div></div>
+
+                    <div>
+                        <p class="text-xs text-gray-500">Total UPB <span class="text-gray-400">(100rb + 50rb)</span></p>
+                        <p class="text-lg font-bold text-amber-600">Rp {{ number_format($ringkasan['totalUPB'], 0, ',', '.') }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Total UPK <span class="text-gray-400">(20rb ke bawah + logam)</span></p>
+                        <p class="text-lg font-bold text-amber-600">Rp {{ number_format($ringkasan['totalUPK'], 0, ',', '.') }}</p>
+                    </div>
+                </div>
             </div>
         </div>
 

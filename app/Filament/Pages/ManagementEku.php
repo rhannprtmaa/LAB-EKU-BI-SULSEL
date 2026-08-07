@@ -6,6 +6,7 @@ use App\Models\Bank;
 use App\Models\EkuDeadline;
 use App\Models\EkuTemplate;
 use App\Support\CurrentUser;
+use App\Support\EkuExcelParser;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -104,10 +105,26 @@ class ManagementEku extends Page implements HasForms, HasTable
                                     ->default(fn (Bank $record) => $record->file_batasan_setoran)
                             ])
                             ->action(function (Bank $record, array $data) {
+                                $path = $data['file_batasan_setoran'];
+
+                                // Sebelumnya cuma path file yang disimpan, totalnya
+                                // (batasan_setoran) tidak pernah dihitung ulang --
+                                // makanya nilainya tetap 0 di mana pun ditampilkan.
+                                // Sekarang parsing-nya memakai logic yang SAMA PERSIS
+                                // dengan pembacaan file pengajuan EKU (forecast).
                                 $record->update([
-                                    'file_batasan_setoran' => $data['file_batasan_setoran']
+                                    'file_batasan_setoran' => $path,
+                                    'file_batasan_setoran_nama_asli' => basename($path),
+                                    'batasan_setoran' => EkuExcelParser::totalDariFile($path),
                                 ]);
-                                Notification::make()->title('File Batasan Setoran berhasil diunggah!')->success()->send();
+
+                                // Kalau ada pengajuan EKU bank ini yang sudah melebihi
+                                // batasan baru, langsung disesuaikan otomatis.
+                                $record->ekuTransactions()->get()->each(
+                                    fn ($transaksi) => $transaksi->terapkanBatasanBank()
+                                );
+
+                                Notification::make()->title('File Batasan Setoran berhasil diunggah dan totalnya dihitung ulang!')->success()->send();
                             })
                     ),
 
@@ -135,10 +152,19 @@ class ManagementEku extends Page implements HasForms, HasTable
                                     ->default(fn (Bank $record) => $record->file_batasan_penarikan)
                             ])
                             ->action(function (Bank $record, array $data) {
+                                $path = $data['file_batasan_penarikan'];
+
                                 $record->update([
-                                    'file_batasan_penarikan' => $data['file_batasan_penarikan']
+                                    'file_batasan_penarikan' => $path,
+                                    'file_batasan_penarikan_nama_asli' => basename($path),
+                                    'batasan_penarikan' => EkuExcelParser::totalDariFile($path),
                                 ]);
-                                Notification::make()->title('File Batasan Penarikan berhasil diunggah!')->success()->send();
+
+                                $record->ekuTransactions()->get()->each(
+                                    fn ($transaksi) => $transaksi->terapkanBatasanBank()
+                                );
+
+                                Notification::make()->title('File Batasan Penarikan berhasil diunggah dan totalnya dihitung ulang!')->success()->send();
                             })
                     ),
             ])
@@ -164,7 +190,12 @@ class ManagementEku extends Page implements HasForms, HasTable
                             ->label('Batasan Penarikan (Rp)')
                             ->numeric()
                             ->placeholder('Kosongkan jika tanpa batasan'),
-                    ]),
+                    ])
+                    ->after(function (Bank $record) {
+                        $record->ekuTransactions()->get()->each(
+                            fn ($transaksi) => $transaksi->terapkanBatasanBank()
+                        );
+                    }),
 
                 Action::make('delete_batasan')
                     ->label('Delete')
