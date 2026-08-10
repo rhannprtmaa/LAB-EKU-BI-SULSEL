@@ -112,92 +112,106 @@
                             <div class="flex flex-col h-full w-full py-2 lg:pr-4">
                                 <h4 class="text-center font-semibold text-gray-700 dark:text-gray-300 mb-6 uppercase tracking-wide text-sm">Komposisi Realisasi EKU</h4>
 
-                                <div class="flex flex-col xl:flex-row items-center justify-center gap-8 w-full">
-                                    {{-- Donut SVG --}}
-                                    <div class="relative shrink-0 drop-shadow-sm" style="width: 180px; height: 180px;">
-                                        <svg viewBox="0 0 200 200" class="w-full h-full">
-                                            <g transform="rotate(-90 100 100)">
-                                                <circle cx="100" cy="100" r="{{ $pieRealisasi['radius'] }}" fill="none" stroke="currentColor" class="text-gray-100 dark:text-gray-800" stroke-width="{{ $pieRealisasi['strokeWidth'] }}" />
-                                                @foreach ($pieRealisasi['slices'] as $i => $slice)
-                                                    <circle cx="100" cy="100" r="{{ $pieRealisasi['radius'] }}" fill="none" stroke="{{ $slice['color'] }}" stroke-width="{{ $pieRealisasi['strokeWidth'] }}" stroke-linecap="round" stroke-dashoffset="{{ $slice['dashOffset'] }}"
-                                                            :stroke-dasharray="animate ? '{{ $slice['dashLen'] }} {{ $pieRealisasi['circumference'] }}' : '0 {{ $pieRealisasi['circumference'] }}'"
-                                                            style="transition: stroke-dasharray 1s cubic-bezier(0.4,0,0.2,1) {{ $i * 0.15 }}s;" />
-                                                @endforeach
-                                            </g>
-                                        </svg>
-                                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
-                                            <span class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Total</span>
-                                            <span class="text-sm font-bold text-gray-800 dark:text-white">{{ $pieRealisasi['totalFmt'] }}</span>
+                                @if ($pieRealisasi['hasData'])
+                                    <div class="flex flex-col xl:flex-row items-center justify-center gap-8 w-full">
+                                        {{-- Donut SVG --}}
+                                        <div class="relative shrink-0 drop-shadow-sm" style="width: 180px; height: 180px;">
+                                            <svg viewBox="0 0 200 200" class="w-full h-full">
+                                                <g transform="rotate(-90 100 100)">
+                                                    <circle cx="100" cy="100" r="{{ $pieRealisasi['radius'] }}" fill="none" stroke="currentColor" class="text-gray-100 dark:text-gray-800" stroke-width="{{ $pieRealisasi['strokeWidth'] }}" />
+                                                    @foreach ($pieRealisasi['slices'] as $i => $slice)
+                                                        <circle cx="100" cy="100" r="{{ $pieRealisasi['radius'] }}" fill="none" stroke="{{ $slice['color'] }}" stroke-width="{{ $pieRealisasi['strokeWidth'] }}" stroke-linecap="round" stroke-dashoffset="{{ $slice['dashOffset'] }}"
+                                                                :stroke-dasharray="animate ? '{{ $slice['dashLen'] }} {{ $pieRealisasi['circumference'] }}' : '0 {{ $pieRealisasi['circumference'] }}'"
+                                                                style="transition: stroke-dasharray 1s cubic-bezier(0.4,0,0.2,1) {{ $i * 0.15 }}s;" />
+                                                    @endforeach
+                                                </g>
+                                            </svg>
+                                            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
+                                                <span class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Total</span>
+                                                <span class="text-sm font-bold text-gray-800 dark:text-white">{{ $pieRealisasi['totalFmt'] }}</span>
+                                            </div>
+                                        </div>
+
+                                        {{-- Keterangan Detail Realisasi --}}
+                                        <div class="flex-1 w-full max-w-xs flex flex-col justify-center gap-4">
+                                            @foreach ($pieRealisasi['slices'] as $i => $slice)
+                                                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-100 dark:border-gray-700/50">
+                                                    <div class="flex justify-between items-start mb-2">
+                                                        <div>
+                                                            <div class="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 text-sm">
+                                                                <span class="w-2.5 h-2.5 rounded-full" style="background-color: {{ $slice['color'] }}"></span>
+                                                                {{ $slice['label'] }}
+                                                            </div>
+                                                            <div class="text-xs text-gray-500 dark:text-gray-400 ml-4.5 mt-0.5 font-medium">{{ $slice['valueFmt'] }}</div>
+                                                        </div>
+                                                        <div class="text-lg font-bold" style="color: {{ $slice['color'] }}">{{ $slice['persen'] }}%</div>
+                                                    </div>
+                                                    <div class="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                                                        <div class="h-full rounded-full" :style="`background-color: {{ $slice['color'] }}; width: ${animate ? {{ $slice['persen'] }} : 0}%; transition: width 1s cubic-bezier(0.4,0,0.2,1) {{ $i * 0.15 }}s;`"></div>
+                                                    </div>
+                                                </div>
+                                            @endforeach
                                         </div>
                                     </div>
-
-                                    {{-- Keterangan Detail Realisasi --}}
-                                    <div class="flex-1 w-full max-w-xs flex flex-col justify-center gap-4">
-                                        @foreach ($pieRealisasi['slices'] as $i => $slice)
-                                            <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-100 dark:border-gray-700/50">
-                                                <div class="flex justify-between items-start mb-2">
-                                                    <div>
-                                                        <div class="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 text-sm">
-                                                            <span class="w-2.5 h-2.5 rounded-full" style="background-color: {{ $slice['color'] }}"></span>
-                                                            {{ $slice['label'] }}
-                                                        </div>
-                                                        <div class="text-xs text-gray-500 dark:text-gray-400 ml-4.5 mt-0.5 font-medium">{{ $slice['valueFmt'] }}</div>
-                                                    </div>
-                                                    <div class="text-lg font-bold" style="color: {{ $slice['color'] }}">{{ $slice['persen'] }}%</div>
-                                                </div>
-                                                <div class="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                                                    <div class="h-full rounded-full" :style="`background-color: {{ $slice['color'] }}; width: ${animate ? {{ $slice['persen'] }} : 0}%; transition: width 1s cubic-bezier(0.4,0,0.2,1) {{ $i * 0.15 }}s;`"></div>
-                                                </div>
-                                            </div>
-                                        @endforeach
+                                @else
+                                    <div class="flex flex-col items-center justify-center text-center text-gray-400 py-8">
+                                        <x-heroicon-o-inbox class="w-8 h-8 mb-2 text-gray-300 dark:text-gray-600" />
+                                        <p class="text-sm">Belum ada data Realisasi pada periode ini</p>
                                     </div>
-                                </div>
+                                @endif
                             </div>
 
                             {{-- KOLOM KANAN: STATUS DEVIASI --}}
                             <div class="flex flex-col h-full w-full py-2 lg:pl-4 pt-8 lg:pt-2">
                                 <h4 class="text-center font-semibold text-gray-700 dark:text-gray-300 mb-6 uppercase tracking-wide text-sm">Status Deviasi (Forecast vs Realisasi)</h4>
 
-                                <div class="flex flex-col xl:flex-row items-center justify-center gap-8 w-full">
-                                    {{-- Donut SVG --}}
-                                    <div class="relative shrink-0 drop-shadow-sm" style="width: 180px; height: 180px;">
-                                        <svg viewBox="0 0 200 200" class="w-full h-full">
-                                            <g transform="rotate(-90 100 100)">
-                                                <circle cx="100" cy="100" r="{{ $pieDeviasi['radius'] }}" fill="none" stroke="currentColor" class="text-gray-100 dark:text-gray-800" stroke-width="{{ $pieDeviasi['strokeWidth'] }}" />
-                                                @foreach ($pieDeviasi['slices'] as $i => $slice)
-                                                    <circle cx="100" cy="100" r="{{ $pieDeviasi['radius'] }}" fill="none" stroke="{{ $slice['color'] }}" stroke-width="{{ $pieDeviasi['strokeWidth'] }}" stroke-linecap="round" stroke-dashoffset="{{ $slice['dashOffset'] }}"
-                                                            :stroke-dasharray="animate ? '{{ $slice['dashLen'] }} {{ $pieDeviasi['circumference'] }}' : '0 {{ $pieDeviasi['circumference'] }}'"
-                                                            style="transition: stroke-dasharray 1s cubic-bezier(0.4,0,0.2,1) {{ $i * 0.15 }}s;" />
-                                                @endforeach
-                                            </g>
-                                        </svg>
-                                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
-                                            <span class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Total</span>
-                                            <span class="text-sm font-bold text-gray-800 dark:text-white">{{ $pieDeviasi['totalFmt'] }}</span>
+                                @if ($pieDeviasi['hasData'])
+                                    <div class="flex flex-col xl:flex-row items-center justify-center gap-8 w-full">
+                                        {{-- Donut SVG --}}
+                                        <div class="relative shrink-0 drop-shadow-sm" style="width: 180px; height: 180px;">
+                                            <svg viewBox="0 0 200 200" class="w-full h-full">
+                                                <g transform="rotate(-90 100 100)">
+                                                    <circle cx="100" cy="100" r="{{ $pieDeviasi['radius'] }}" fill="none" stroke="currentColor" class="text-gray-100 dark:text-gray-800" stroke-width="{{ $pieDeviasi['strokeWidth'] }}" />
+                                                    @foreach ($pieDeviasi['slices'] as $i => $slice)
+                                                        <circle cx="100" cy="100" r="{{ $pieDeviasi['radius'] }}" fill="none" stroke="{{ $slice['color'] }}" stroke-width="{{ $pieDeviasi['strokeWidth'] }}" stroke-linecap="round" stroke-dashoffset="{{ $slice['dashOffset'] }}"
+                                                                :stroke-dasharray="animate ? '{{ $slice['dashLen'] }} {{ $pieDeviasi['circumference'] }}' : '0 {{ $pieDeviasi['circumference'] }}'"
+                                                                style="transition: stroke-dasharray 1s cubic-bezier(0.4,0,0.2,1) {{ $i * 0.15 }}s;" />
+                                                    @endforeach
+                                                </g>
+                                            </svg>
+                                            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
+                                                <span class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Total</span>
+                                                <span class="text-sm font-bold text-gray-800 dark:text-white">{{ $pieDeviasi['totalFmt'] }}</span>
+                                            </div>
+                                        </div>
+
+                                        {{-- Keterangan Detail Deviasi --}}
+                                        <div class="flex-1 w-full max-w-xs flex flex-col justify-center gap-4">
+                                            @foreach ($pieDeviasi['slices'] as $i => $slice)
+                                                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-100 dark:border-gray-700/50">
+                                                    <div class="flex justify-between items-start mb-2">
+                                                        <div>
+                                                            <div class="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 text-sm">
+                                                                <span class="w-2.5 h-2.5 rounded-full" style="background-color: {{ $slice['color'] }}"></span>
+                                                                {{ $slice['label'] }}
+                                                            </div>
+                                                            <div class="text-xs text-gray-500 dark:text-gray-400 ml-4.5 mt-0.5 font-medium">{{ $slice['valueFmt'] }}</div>
+                                                        </div>
+                                                        <div class="text-lg font-bold" style="color: {{ $slice['color'] }}">{{ $slice['persen'] }}%</div>
+                                                    </div>
+                                                    <div class="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                                                        <div class="h-full rounded-full" :style="`background-color: {{ $slice['color'] }}; width: ${animate ? {{ $slice['persen'] }} : 0}%; transition: width 1s cubic-bezier(0.4,0,0.2,1) {{ $i * 0.15 }}s;`"></div>
+                                                    </div>
+                                                </div>
+                                            @endforeach
                                         </div>
                                     </div>
-
-                                    {{-- Keterangan Detail Deviasi --}}
-                                    <div class="flex-1 w-full max-w-xs flex flex-col justify-center gap-4">
-                                        @foreach ($pieDeviasi['slices'] as $i => $slice)
-                                            <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-100 dark:border-gray-700/50">
-                                                <div class="flex justify-between items-start mb-2">
-                                                    <div>
-                                                        <div class="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 text-sm">
-                                                            <span class="w-2.5 h-2.5 rounded-full" style="background-color: {{ $slice['color'] }}"></span>
-                                                            {{ $slice['label'] }}
-                                                        </div>
-                                                        <div class="text-xs text-gray-500 dark:text-gray-400 ml-4.5 mt-0.5 font-medium">{{ $slice['valueFmt'] }}</div>
-                                                    </div>
-                                                    <div class="text-lg font-bold" style="color: {{ $slice['color'] }}">{{ $slice['persen'] }}%</div>
-                                                </div>
-                                                <div class="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                                                    <div class="h-full rounded-full" :style="`background-color: {{ $slice['color'] }}; width: ${animate ? {{ $slice['persen'] }} : 0}%; transition: width 1s cubic-bezier(0.4,0,0.2,1) {{ $i * 0.15 }}s;`"></div>
-                                                </div>
-                                            </div>
-                                        @endforeach
+                                @else
+                                    <div class="flex flex-col items-center justify-center text-center text-gray-400 py-8">
+                                        <x-heroicon-o-inbox class="w-8 h-8 mb-2 text-gray-300 dark:text-gray-600" />
+                                        <p class="text-sm">Belum ada data Deviasi pada periode ini</p>
                                     </div>
-                                </div>
+                                @endif
                             </div>
 
                         </div>
@@ -265,8 +279,7 @@
                             </svg>
 
                             <div x-show="tip" x-cloak
-                                 class="pointer-events-none fixed z-50 rounded-lg bg-blue-900 dark:bg-gray-800 border border-white/10 text-white text-xs px-3.5 py-2.5 shadow-xl min-w-[190px]"
-                                 :style="`left: ${mx + 16}px; top: ${my + 16}px;`">
+                                 class="pointer-events-none fixed z-50 rounded-lg bg-blue-900 dark:bg-gray-800 border border-white/10 text-white text-xs px-3.5 py-2.5 shadow-xl min-w-[190px]">
                                 <template x-if="tip">
                                     <div class="space-y-1.5">
                                         <p class="font-semibold text-sm text-white" x-text="tip.bulan"></p>

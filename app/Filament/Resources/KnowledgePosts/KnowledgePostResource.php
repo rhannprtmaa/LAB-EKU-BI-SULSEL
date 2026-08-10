@@ -46,7 +46,7 @@ class KnowledgePostResource extends Resource
     }
 
     public static function canEdit(Model $record): bool
-    {
+    { 
         return CurrentUser::get()?->isAdminBi() ?? false;
     }
 

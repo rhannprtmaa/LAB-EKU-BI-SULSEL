@@ -23,9 +23,16 @@ class UsersTable
                 TextColumn::make('role')
                     ->label('Role')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'admin_bi' => 'Admin BI',
+                        'user_bi' => 'User BI',
+                        'user_perbankan' => 'User Bank',
+                        default => $state,
+                    })
                     ->color(fn (string $state): string => match ($state) {
-                        'admin' => 'danger',
-                        'bank' => 'info',
+                        'admin_bi' => 'danger',
+                        'user_bi' => 'warning',
+                        'user_perbankan' => 'info',
                         default => 'gray',
                     }),
 
@@ -42,6 +49,14 @@ class UsersTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('role')
+                    ->label('Filter Role')
+                    ->options([
+                        'admin_bi' => 'Admin BI',
+                        'user_bi' => 'User BI',
+                        'user_perbankan' => 'User Bank',
+                    ]),
+
                 // Filter berdasarkan Bank
                 SelectFilter::make('bank_id')
                     ->label('Filter Bank')

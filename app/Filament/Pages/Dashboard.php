@@ -376,13 +376,25 @@ public function form(Schema $schema): Schema
         $colors = $data['colors'];
         $total = array_sum($values);
 
-        if ($total <= 0) {
-            return ['hasData' => false, 'slices' => [], 'total' => 0];
-        }
-
         $radius = 80;
         $strokeWidth = 30;
         $circumference = 2 * M_PI * $radius;
+        
+        $kosong = [
+            'hasData' => false,
+            'slices' => [],
+            'total' => 0,
+            'radius' => $radius,
+            'strokeWidth' => $strokeWidth,
+            'circumference' => round($circumference, 2),
+            'totalFmt' => $this->formatRupiahSingkat(0),
+            'jumlahKategori' => 0,
+        ];
+
+        if ($total <= 0.01) {
+            return $kosong;
+        }
+
         $jumlahKategori = count(array_filter($values, fn ($v) => $v > 0));
         $jarakPemisah = $jumlahKategori > 1 ? 5 : 0;
         $slices = [];
@@ -405,8 +417,12 @@ public function form(Schema $schema): Schema
             $persenKumulatif += $persen;
         }
 
+        if (count($slices) === 0) {
+            return $kosong;
+        }
+
         return [
-            'hasData' => count($slices) > 0,
+            'hasData' => true,
             'slices' => $slices,
             'radius' => $radius,
             'strokeWidth' => $strokeWidth,
