@@ -7,7 +7,6 @@ use App\Models\Bank;
 use App\Models\EkuDeadline;
 use App\Models\EkuTransaction;
 use App\Support\CurrentUser;
-use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -142,18 +141,21 @@ class EkuTransactionsTable
                     ->before(function (EditAction $action, EkuTransaction $record) {
                         $currentUser = CurrentUser::get();
 
-                        if ($currentUser?->isUserPerbankan()) {
-                            $deadline = EkuDeadline::where('periode', $record->periode)->first();
+                        if ($currentUser?->isUserPerbankan() && EkuDeadline::isTertutup()) {
+                            $deadline = EkuDeadline::current();
+                            $tanggal = $deadline?->batas_waktu?->locale('id')->translatedFormat('d F Y');
 
-                            if ($deadline && now()->isAfter($deadline->batas_waktu)) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Akses Ditolak!')
-                                    ->body("Waktu pengeditan / revisi EKU untuk periode {$record->periode} telah berakhir pada " . Carbon::parse($deadline->batas_waktu)->translatedFormat('d F Y H:i') . ".")
-                                    ->send();
+                            Notification::make()
+                                ->danger()
+                                ->persistent()
+                                ->title('Batas Waktu Pengeditan Telah Berakhir')
+                                ->body(
+                                    ($tanggal ? "Batas waktu pengajuan EKU telah berakhir sejak {$tanggal}. " : 'Batas waktu pengajuan EKU telah berakhir. ')
+                                    .'Silakan bersurat resmi ke Bank Indonesia untuk permohonan perpanjangan masa waktu pengajuan.'
+                                )
+                                ->send();
 
-                                $action->halt();
-                            }
+                            $action->halt();
                         }
                     }),
 

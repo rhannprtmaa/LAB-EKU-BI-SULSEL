@@ -49,15 +49,15 @@ class RealisasiEkuResource extends Resource
     }
 
 
-    public static function getEloquentQuery(): Builder
+public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        $query = parent::getEloquentQuery()
             ->where('status', EkuTransaction::STATUS_DISETUJUI)
             ->withCount('realisasiHistory')
             ->withSum('realisasiHistory', 'total_setoran')
             ->withSum('realisasiHistory', 'total_penarikan');
 
-            $user = CurrentUser::get();
+        $user = CurrentUser::get();
         if ($user?->isUserPerbankan()) {
             $query->where('bank_id', $user->bank_id);
         }

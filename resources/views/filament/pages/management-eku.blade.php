@@ -65,12 +65,12 @@
 
             {{-- Tabel Riwayat Deadline --}}
             <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                <h3 class="text-md font-bold text-gray-900 dark:text-white mb-3">Daftar Batas Waktu Pengajuan</h3>
+                <h3 class="text-md font-bold text-gray-900 dark:text-white mb-3">Batas Waktu Pengajuan EKU</h3>
                 <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
                     <table class="w-full text-sm text-left text-gray-600 dark:text-gray-300">
                         <thead class="text-xs uppercase bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
                             <tr>
-                                <th class="px-4 py-3">No</th>
+                                <th class="px-4 py-3">No.</th>
                                 <th class="px-4 py-3">Batas Waktu Pengajuan</th>
                                 <th class="px-4 py-3">Keterangan</th>
                                 <th class="px-4 py-3">Dibuat Pada</th>

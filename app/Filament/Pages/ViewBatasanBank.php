@@ -10,7 +10,6 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ViewBatasanBank extends Page
 {
-    // Menggunakan slug statis agar aman dari RouteNotFoundException
     protected static ?string $slug = 'view-batasan-bank';
 
     protected static bool $shouldRegisterNavigation = false;
@@ -19,12 +18,10 @@ class ViewBatasanBank extends Page
 
     public ?Bank $bank = null;
 
-    // Variabel array tunggal untuk menggabungkan Setoran dan Penarikan
     public array $rincian = [];
 
     public function mount(): void
     {
-        // Tangkap parameter ID dari Query String (?record=...)
         $recordId = request()->query('record');
 
         if (!$recordId) {
@@ -36,27 +33,17 @@ class ViewBatasanBank extends Page
         $setoran = [];
         $penarikan = [];
 
-        // Parsing file batasan Setoran
         if ($this->bank->file_batasan_setoran) {
             $setoran = $this->parseExcel($this->bank->file_batasan_setoran, 'Setoran');
         }
 
-        // Parsing file batasan Penarikan
         if ($this->bank->file_batasan_penarikan) {
             $penarikan = $this->parseExcel($this->bank->file_batasan_penarikan, 'Penarikan');
         }
 
-        // Gabungkan Setoran dan Penarikan ke dalam satu array
         $this->rincian = array_merge($setoran, $penarikan);
     }
 
-    /**
-     * Ringkasan Total dari batasan (Setoran + Penarikan), sama persis
-     * perhitungannya (dan tampilannya) dengan "Rincian Proyeksi EKU
-     * Bulanan" punya pengajuan EKU -- cuma sumber datanya beda: di sini
-     * dari hasil parsing file batasan ($this->rincian), bukan dari
-     * database eku_transaction_details.
-     */
     public function getRingkasan(): array
     {
         $totalSetoran = 0.0;
@@ -115,16 +102,15 @@ class ViewBatasanBank extends Page
         return 'Detail Batasan EKU - ' . ($this->bank->name ?? '');
     }
 
-    /**
-     * Ditambahkan parameter $jenis untuk menandai baris (Setoran/Penarikan)
-     */
     private function parseExcel(?string $filePath, string $jenis): array
     {
-        if (!$filePath || !Storage::disk('public')->exists($filePath)) {
+        // UBAH KE DISK LOCAL
+        if (!$filePath || !Storage::disk('local')->exists($filePath)) {
             return [];
         }
 
-        $fullPath = Storage::disk('public')->path($filePath);
+        // UBAH KE DISK LOCAL
+        $fullPath = Storage::disk('local')->path($filePath);
         $arrayData = Excel::toArray(new EkuExcelImport(), $fullPath);
 
         if (empty($arrayData) || empty($arrayData[0])) {
@@ -144,7 +130,6 @@ class ViewBatasanBank extends Page
             11 => 'September', 12 => 'Oktober', 13 => 'November', 14 => 'Desember',
         ];
 
-        // Format Key Persis Seperti Model Anda
         $petaKertas = [
             100000 => 'kertas_100k', 50000 => 'kertas_50k', 20000 => 'kertas_20k',
             10000 => 'kertas_10k', 5000 => 'kertas_5k', 2000 => 'kertas_2k', 1000 => 'kertas_1k',
@@ -157,7 +142,7 @@ class ViewBatasanBank extends Page
         foreach ($kolomBulan as $namaBulan) {
             $akumulasi[$namaBulan] = [
                 'bulan' => $namaBulan,
-                'jenis' => $jenis, // <-- Menyematkan jenis transaksi
+                'jenis' => $jenis,
                 'kertas_100k' => 0, 'kertas_50k' => 0, 'kertas_20k' => 0, 'kertas_10k' => 0,
                 'kertas_5k' => 0, 'kertas_2k' => 0, 'kertas_1k' => 0,
                 'logam_1k' => 0, 'logam_500' => 0, 'logam_200' => 0, 'logam_100' => 0,

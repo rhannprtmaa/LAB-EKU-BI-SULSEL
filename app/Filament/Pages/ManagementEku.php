@@ -249,6 +249,16 @@ class ManagementEku extends Page implements HasForms, HasTable
             ->statePath('data');
     }
 
+    /**
+     * PERBAIKAN: sebelumnya method ini SELALU membuat baris baru
+     * (EkuDeadline::create), jadi kalau Admin BI edit ulang deadline
+     * berkali-kali, tabelnya menumpuk banyak baris -- dan pengecekan di
+     * form pengajuan bank ternyata mengambil baris PALING PERTAMA/lama
+     * (bukan yang terbaru), jadi perubahan deadline tidak pernah kepakai.
+     *
+     * Sekarang deadline HANYA SATU baris untuk seluruh aplikasi: kalau
+     * sudah ada, di-update di tempat; kalau belum ada, baru dibuatkan.
+     */
     public function simpanDeadline(): void
     {
         $this->validate([
@@ -256,23 +266,34 @@ class ManagementEku extends Page implements HasForms, HasTable
             'keterangan_deadline' => 'nullable|string|max:255',
         ]);
 
-        EkuDeadline::create([
-            'batas_waktu' => $this->tanggal_deadline,
-            'keterangan' => $this->keterangan_deadline,
-            'created_by' => Auth::id(),
-        ]);
+        $deadline = EkuDeadline::current();
+
+        if ($deadline) {
+            $deadline->update([
+                'batas_waktu' => $this->tanggal_deadline,
+                'keterangan' => $this->keterangan_deadline,
+                'created_by' => Auth::id(),
+            ]);
+        } else {
+            EkuDeadline::create([
+                'batas_waktu' => $this->tanggal_deadline,
+                'keterangan' => $this->keterangan_deadline,
+                'created_by' => Auth::id(),
+            ]);
+        }
 
         Notification::make()
             ->title('Batas Pengajuan EKU berhasil disimpan')
             ->success()
             ->send();
-
-        $this->keterangan_deadline = null;
     }
 
     public function hapusDeadline($id): void
     {
         EkuDeadline::findOrFail($id)->delete();
+
+        $this->tanggal_deadline = null;
+        $this->keterangan_deadline = null;
 
         Notification::make()
             ->title('Batas Pengajuan EKU berhasil dihapus')

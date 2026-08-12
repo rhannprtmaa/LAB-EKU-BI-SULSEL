@@ -6,12 +6,12 @@ use App\Filament\Resources\EkuTransactions\EkuTransactionResource;
 use App\Filament\Resources\EkuTransactions\Widgets\TemplateKerjaWidget;
 use App\Models\EkuDeadline;
 use App\Support\CurrentUser;
-use Carbon\Carbon;
+use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
-use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
-use Illuminate\Support\Facades\Auth;
 use Filament\Support\Enums\Width;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 
 class ListEkuTransactions extends ListRecords
 {
@@ -24,42 +24,25 @@ class ListEkuTransactions extends ListRecords
         ];
     }
 
+    /**
+     * Batas Pengajuan EKU (User Bank) sudah lewat?
+     * Hanya relevan untuk User Perbankan -- Admin/User BI tidak dibatasi.
+     */
+    protected function batasPengajuanSudahLewat(): bool
+    {
+        $user = CurrentUser::get();
+
+        return (bool) ($user?->isUserPerbankan() && EkuDeadline::isTertutup());
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
                 ->label('Buat Pengajuan Baru')
-                ->modalHeading('Buat Pengajuan EKU ')
+                ->modalHeading('Buat Pengajuan EKU')
                 ->modalWidth(Width::TwoExtraLarge)
-                ->visible(fn (): bool => EkuTransactionResource::canCreate())
-
-                // --- Validasi Deadline Pengajuan ---
-                ->before(function (CreateAction $action, array $data) {
-                    $user = CurrentUser::get();
-
-                    // Pengecekan deadline HANYA berlaku untuk User Perbankan
-                    if ($user?->isUserPerbankan()) {
-
-                        $periode = $data['periode'] ?? date('Y');
-
-                        // Mencari data deadline untuk periode yang dipilih
-                        $deadline = EkuDeadline::where('periode', $periode)->first();
-
-                        // Menggunakan kolom 'batas_waktu' sesuai database Anda
-                        if ($deadline && now()->isAfter($deadline->batas_waktu)) {
-
-                            Notification::make()
-                                ->danger()
-                                ->title('Batas Waktu Pengajuan Habis!')
-                                ->body("Waktu pengajuan EKU untuk periode {$periode} telah ditutup oleh Admin BI sejak " . Carbon::parse($deadline->batas_waktu)->translatedFormat('d F Y H:i') . ".")
-                                ->send();
-
-                            // Membatalkan proses pop-up form terbuka/tersimpan
-                            $action->halt();
-                        }
-                    }
-                })
-
+                ->visible(fn (): bool => EkuTransactionResource::canCreate() && ! $this->batasPengajuanSudahLewat())
                 ->mutateFormDataUsing(function (array $data): array {
                     $user = CurrentUser::get();
 
@@ -71,6 +54,27 @@ class ListEkuTransactions extends ListRecords
 
                     return $data;
                 }),
+            Action::make('batas_waktu_habis')
+                ->label('Buat Pengajuan Baru')
+                ->icon('heroicon-o-lock-closed')
+                ->color('danger')
+                ->visible(fn (): bool => EkuTransactionResource::canCreate() && $this->batasPengajuanSudahLewat())
+                ->modalHeading('Batas Waktu Pengajuan EKU Telah Berakhir')
+                ->modalIcon('heroicon-o-exclamation-triangle')
+                ->modalIconColor('danger')
+                ->modalDescription(function (): HtmlString {
+                    $deadline = EkuDeadline::current();
+                    $tanggal = $deadline?->batas_waktu?->locale('id')->translatedFormat('d F Y');
+
+                    return new HtmlString(
+                        ($tanggal ? "Batas waktu pengajuan EKU telah berakhir sejak <strong>{$tanggal}</strong>. " : 'Batas waktu pengajuan EKU telah berakhir. ')
+                        .'Sistem tidak dapat menerima input file EKU baru untuk saat ini.'
+                        .'<br><br>Apabila Bank Anda tetap memerlukan waktu tambahan, silakan mengajukan '
+                        .'<strong>surat resmi ke Bank Indonesia</strong> untuk permohonan perpanjangan masa waktu pengajuan EKU.'
+                    );
+                })
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Tutup'),
         ];
     }
 }

@@ -6,6 +6,7 @@ use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\KnowledgeCenter;
 use App\Filament\Pages\ManagementEku;
+use App\Filament\Pages\ReportEku;
 use App\Filament\Resources\EkuTransactions\EkuTransactionResource;
 use App\Filament\Resources\RealisasiEkus\RealisasiEkuResource;
 use Filament\Http\Middleware\Authenticate;
@@ -57,6 +58,7 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 Dashboard::class,
                 ManagementEku::class,
+                ReportEku::class,
                 KnowledgeCenter::class,
                 ViewBatasanBank::class,
             ])

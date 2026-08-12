@@ -46,7 +46,7 @@ class EkuTransactionInfolist
                             ->icon('heroicon-o-building-library'),
                         TextEntry::make('periode')
                             ->label('Periode')
-                            ->icon('heroi scon-o-calendar'),
+                            ->icon('heroicon-o-calendar'),
                         TextEntry::make('status')
                             ->label('Status')
                             ->badge()
