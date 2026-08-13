@@ -39,6 +39,7 @@ class AdminPanelProvider extends PanelProvider
             ->globalSearch(position: \Filament\Enums\GlobalSearchPosition::Topbar)
             ->defaultThemeMode(ThemeMode::Light)
             ->font('Plus Jakarta Sans', provider: GoogleFontProvider::class)
+            ->favicon(asset('images/logo-bi.png'))
 
             // --- Tampilan Panel ---
             ->viteTheme('resources/css/filament/admin/theme.css')

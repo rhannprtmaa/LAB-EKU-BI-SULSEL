@@ -79,13 +79,13 @@ class ReportEku extends Page implements HasTable
                 TextColumn::make('pengajuan_setoran')
                     ->label('Pengajuan Setoran')
                     ->alignEnd()
-                    ->state(fn (EkuTransaction $record) => $this->laporanUntuk($record)['pengajuanSetoran'])
+                    ->state(fn (EkuTransaction $record) => $this->laporanUntuk($record)['setoranTotal'])
                     ->formatStateUsing(fn (float $state) => $this->rupiah($state)),
 
                 TextColumn::make('pengajuan_penarikan')
                     ->label('Pengajuan Penarikan')
                     ->alignEnd()
-                    ->state(fn (EkuTransaction $record) => $this->laporanUntuk($record)['pengajuanPenarikan'])
+                    ->state(fn (EkuTransaction $record) => $this->laporanUntuk($record)['penarikanTotal'])
                     ->formatStateUsing(fn (float $state) => $this->rupiah($state)),
 
                 TextColumn::make('realisasi_setoran')
