@@ -6,10 +6,14 @@ use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
 class RealisasiMassalImport implements WithMultipleSheets
 {
-    public function __construct(
-        protected string|int $bulan,
-        protected string|int $tahun,
-    ) {}
+    protected string|int $bulan;
+    protected string|int $tahun;
+
+    public function __construct(string|int $bulan, string|int $tahun)
+    {
+        $this->bulan = $bulan;
+        $this->tahun = $tahun;
+    }
 
     public function sheets(): array
     {
