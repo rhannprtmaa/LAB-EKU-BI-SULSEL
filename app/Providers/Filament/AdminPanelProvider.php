@@ -25,6 +25,7 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Filament\Enums\ThemeMode;
 use Filament\FontProviders\GoogleFontProvider;
 use App\Filament\Pages\ViewBatasanBank;
+use App\Filament\Pages\UploadRealisasiMassal;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -62,6 +63,7 @@ class AdminPanelProvider extends PanelProvider
                 ReportEku::class,
                 KnowledgeCenter::class,
                 ViewBatasanBank::class,
+                UploadRealisasiMassal::class,
             ])
 
             // --- Middleware Configuration ---
