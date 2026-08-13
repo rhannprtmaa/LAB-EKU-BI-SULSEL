@@ -4,7 +4,7 @@
         {{-- SISI KIRI: Branding Bank Indonesia --}}
         <div class="hidden lg:flex lg:w-1/2 relative bg-cover bg-center items-center justify-center"
              style="background-image: url('{{ asset('images/bg-bi.jpg') }}');">
-            <div class="absolute inset-0 bg-[#054177]/85 backdrop-blur-sm"></div>
+            <div class="absolute inset-0 bg-[#054177]/65 backdrop-blur-sm"></div>
 
             <div class="relative z-10 p-12 text-white max-w-lg text-center">
                 <img src="{{ asset('images/logo-bi.png') }}" alt="Bank Indonesia" class="h-16 mx-auto mb-6">
