@@ -4,14 +4,14 @@ namespace App\Filament\Resources\EkuTransactions\Pages;
 
 use App\Filament\Resources\EkuTransactions\EkuTransactionResource;
 use App\Filament\Resources\EkuTransactions\Widgets\TemplateKerjaWidget;
-use App\Models\EkuDeadline;
+use App\Models\EkuTransaction;
 use App\Support\CurrentUser;
-use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\Width;
+use Filament\Support\Exceptions\Halt;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\HtmlString;
 
 class ListEkuTransactions extends ListRecords
 {
@@ -24,17 +24,6 @@ class ListEkuTransactions extends ListRecords
         ];
     }
 
-    /**
-     * Batas Pengajuan EKU (User Bank) sudah lewat?
-     * Hanya relevan untuk User Perbankan -- Admin/User BI tidak dibatasi.
-     */
-    protected function batasPengajuanSudahLewat(): bool
-    {
-        $user = CurrentUser::get();
-
-        return (bool) ($user?->isUserPerbankan() && EkuDeadline::isTertutup());
-    }
-
     protected function getHeaderActions(): array
     {
         return [
@@ -42,7 +31,7 @@ class ListEkuTransactions extends ListRecords
                 ->label('Buat Pengajuan Baru')
                 ->modalHeading('Buat Pengajuan EKU')
                 ->modalWidth(Width::TwoExtraLarge)
-                ->visible(fn (): bool => EkuTransactionResource::canCreate() && ! $this->batasPengajuanSudahLewat())
+                ->visible(fn (): bool => EkuTransactionResource::canCreate())
                 ->mutateFormDataUsing(function (array $data): array {
                     $user = CurrentUser::get();
 
@@ -53,28 +42,47 @@ class ListEkuTransactions extends ListRecords
                     $data['user_id'] = Auth::id();
 
                     return $data;
-                }),
-            Action::make('batas_waktu_habis')
-                ->label('Buat Pengajuan Baru')
-                ->icon('heroicon-o-lock-closed')
-                ->color('danger')
-                ->visible(fn (): bool => EkuTransactionResource::canCreate() && $this->batasPengajuanSudahLewat())
-                ->modalHeading('Batas Waktu Pengajuan EKU Telah Berakhir')
-                ->modalIcon('heroicon-o-exclamation-triangle')
-                ->modalIconColor('danger')
-                ->modalDescription(function (): HtmlString {
-                    $deadline = EkuDeadline::current();
-                    $tanggal = $deadline?->batas_waktu?->locale('id')->translatedFormat('d F Y');
-
-                    return new HtmlString(
-                        ($tanggal ? "Batas waktu pengajuan EKU telah berakhir sejak <strong>{$tanggal}</strong>. " : 'Batas waktu pengajuan EKU telah berakhir. ')
-                        .'Sistem tidak dapat menerima input file EKU baru untuk saat ini.'
-                        .'<br><br>Apabila Bank Anda tetap memerlukan waktu tambahan, silakan mengajukan '
-                        .'<strong>surat resmi ke Bank Indonesia</strong> untuk permohonan perpanjangan masa waktu pengajuan EKU.'
-                    );
                 })
-                ->modalSubmitAction(false)
-                ->modalCancelActionLabel('Tutup'),
+                ->using(function (array $data): EkuTransaction {
+                    // Cari pengajuan EKU yang SUDAH ADA untuk bank + periode
+                    // yang sama -- kalau ketemu, TIMPA (update) data lamanya,
+                    // JANGAN bikin baris baru. Ini mencegah satu bank punya
+                    // banyak EkuTransaction untuk periode yang sama, yang
+                    // sebelumnya bikin realisasi/deviasi nyasar/numpuk ke
+                    // transaksi yang salah.
+                    $existing = EkuTransaction::query()
+                        ->where('bank_id', $data['bank_id'])
+                        ->where('periode', $data['periode'])
+                        ->first();
+
+                    if (! $existing) {
+                        return EkuTransaction::create($data);
+                    }
+
+                    if ($existing->status === EkuTransaction::STATUS_DISETUJUI) {
+                        Notification::make()
+                            ->title('Periode ' . $data['periode'] . ' sudah Disetujui dan terkunci')
+                            ->body('Tidak bisa diajukan ulang. Kalau perlu revisi, hubungi Bank Indonesia.')
+                            ->danger()
+                            ->persistent()
+                            ->send();
+
+                        throw new Halt();
+                    }
+
+                    // Timpa file & data lama dengan yang baru diupload.
+                    // Event model (saved -> reprocessExcelFiles) tetap
+                    // otomatis jalan karena ini update() Eloquent biasa.
+                    $existing->update($data);
+
+                    Notification::make()
+                        ->title('Pengajuan EKU periode ' . $data['periode'] . ' berhasil diperbarui')
+                        ->body('Sudah ada pengajuan untuk periode ini sebelumnya, jadi datanya ditimpa dengan file yang baru diupload (bukan membuat pengajuan baru).')
+                        ->success()
+                        ->send();
+
+                    return $existing->fresh();
+                }),
         ];
     }
 }
