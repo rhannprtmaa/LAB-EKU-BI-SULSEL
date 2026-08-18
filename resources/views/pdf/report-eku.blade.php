@@ -135,8 +135,8 @@
                 <th rowspan="2" style="width: 4%;">No</th>
                 <th rowspan="2" style="width: 12%;">Bank</th>
                 <th rowspan="2" style="width: 6%;">Periode</th>
-                <th colspan="3">Setoran</th>
-                <th colspan="3">Penarikan</th>
+                <th colspan="3">Proyeksi Setoran</th>
+                <th colspan="3">Proyeksi Penarikan</th>
                 <th rowspan="2" style="width: 9%;">Grand Total</th>
                 <th colspan="2">Realisasi (YTD)</th>
                 <th colspan="2">Deviasi (YTD)</th>

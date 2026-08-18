@@ -29,7 +29,7 @@ class ListRealisasiEkus extends ListRecords
 
             // TOMBOL 2: UPLOAD REALISASI
             Actions\Action::make('upload_realisasi')
-                ->label('Upload Realisasi Massal')
+                ->label('Upload FIle Realisasi')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('primary')
                 ->modalHeading('Upload Data Realisasi')
