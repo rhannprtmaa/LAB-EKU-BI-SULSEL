@@ -146,6 +146,14 @@ class EkuReportCalculator
 
     protected static function jumlahKolom($detail, array $kolom): float
     {
+        if ($kolom === self::KOLOM_UPB && isset($detail->total_upb) && (float) $detail->total_upb > 0) {
+            return (float) $detail->total_upb;
+        }
+
+        if ($kolom === self::KOLOM_UPK && isset($detail->total_upk) && (float) $detail->total_upk > 0) {
+            return (float) $detail->total_upk;
+        }
+
         return (float) collect($kolom)->sum(fn (string $k) => (float) ($detail->{$k} ?? 0));
     }
 }
