@@ -3,7 +3,6 @@
     $rupiah = fn ($v) => 'Rp ' . number_format((float) $v, 0, ',', '.');
 @endphp
 
-{{-- BUNGKUS DENGAN COMPONENT WIDGET FILAMENT AGAR FULL WIDTH BERFUNGSI --}}
 <x-filament-widgets::widget>
     <div class="w-full bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 space-y-4">
         <div>
@@ -21,6 +20,8 @@
                             <th class="px-4 py-3 font-semibold">Bulan</th>
                             <th class="px-4 py-3 font-semibold">Jenis</th>
                             <th class="px-4 py-3 font-semibold text-right">Target (Forecast)</th>
+                            <th class="px-4 py-3 font-semibold text-right">Total UPB</th>
+                            <th class="px-4 py-3 font-semibold text-right">Total UPK</th>
                             <th class="px-4 py-3 font-semibold text-right">Total Realisasi</th>
                             <th class="px-4 py-3 font-semibold text-center">Status</th>
                             <th class="px-4 py-3 font-semibold text-right">Deviasi (Sisa / Over)</th>
@@ -51,6 +52,12 @@
                                 </td>
                                 <td class="px-4 py-3 text-right text-gray-600 dark:text-gray-300">
                                     {{ $rupiah($row['forecast']) }}
+                                </td>
+                                <td class="px-4 py-3 text-right text-gray-600 dark:text-gray-300">
+                                    {{ $rupiah($row['total_upb'] ?? 0) }}
+                                </td>
+                                <td class="px-4 py-3 text-right text-gray-600 dark:text-gray-300">
+                                    {{ $rupiah($row['total_upk'] ?? 0) }}
                                 </td>
                                 <td class="px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">
                                     {{ $rupiah($row['realisasi']) }}

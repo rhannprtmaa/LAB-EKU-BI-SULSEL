@@ -84,18 +84,12 @@ class HistoryRelationManager extends RelationManager
                     ->label('Diinput oleh')
                     ->placeholder('-'),
 
-                TextColumn::make('file_setoran')
-                    ->label('File Setoran')
-                    ->badge()
-                    ->color('info')
-                    ->icon('heroicon-o-document-text')
-                    ->formatStateUsing(fn ($state, $record) => $state
-                        ? ($record->file_setoran_nama_asli ?? basename($state))
-                        : 'Tidak ada')
-                    ->url(fn ($record) => $record->file_setoran
-                        ? Storage::disk('public')->url($record->file_setoran)
-                        : null)
-                    ->openUrlInNewTab(),
+                    TextColumn::make('file_setoran')
+                    ->label('File Realisasi')
+                    ->formatStateUsing(fn ($state) => $state ? 'Download File' : 'Tidak Ada File')
+                    ->url(fn ($state) => $state ? Storage::disk('public')->url($state) : null)
+                    ->color('primary')
+                    ->icon('heroicon-o-document-arrow-down'),
 
                 TextColumn::make('file_penarikan')
                     ->label('File Penarikan')

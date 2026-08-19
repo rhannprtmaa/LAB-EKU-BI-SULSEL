@@ -429,15 +429,15 @@ class EkuTransaction extends Model
      *   - Deviasi POSITIF -> realisasi LEBIH KECIL dari proyeksi (under-realisasi)
      *   - Deviasi NEGATIF -> realisasi LEBIH BESAR dari proyeksi (over-realisasi)
      */
-    public function hitungDeviasi(): array
+   public function hitungDeviasi(): array
     {
         $forecasts = $this->details;
 
-        // PASTIKAN menggunakan SUM dari SEMUA EkuTransactionRealisasiDetail
+        // SAYA TAMBAHKAN SUM(total_upb) DAN SUM(total_upk) DI SINI
         $realisasiDetails = \App\Models\EkuTransactionRealisasiDetail::whereHas('realisasi', function ($q) {
             $q->where('eku_transaction_id', $this->id);
         })
-        ->selectRaw('bulan, jenis_file, SUM(subtotal) as total_realisasi')
+        ->selectRaw('bulan, jenis_file, SUM(subtotal) as total_realisasi, SUM(total_upb) as sum_upb, SUM(total_upk) as sum_upk')
         ->groupBy('bulan', 'jenis_file')
         ->get();
 
@@ -450,6 +450,8 @@ class EkuTransaction extends Model
                 'jenis' => $f->jenis_file,
                 'forecast' => $f->subtotal,
                 'realisasi' => 0,
+                'total_upb' => 0, // Tambahan Baru
+                'total_upk' => 0, // Tambahan Baru
                 'deviasi' => $f->subtotal,
                 'persen_deviasi' => -100
             ];
@@ -461,12 +463,15 @@ class EkuTransaction extends Model
             if (!isset($hasil[$key])) {
                 $hasil[$key] = [
                     'bulan' => $r->bulan, 'jenis' => $r->jenis_file,
-                    'forecast' => 0, 'realisasi' => 0, 'deviasi' => 0, 'persen_deviasi' => 0
+                    'forecast' => 0, 'realisasi' => 0, 'deviasi' => 0, 'persen_deviasi' => 0,
+                    'total_upb' => 0, 'total_upk' => 0 // Tambahan Baru
                 ];
             }
 
-            // AKUMULASI NILAI REALISASI
+            // AKUMULASI NILAI REALISASI, UPB, & UPK
             $hasil[$key]['realisasi'] += $r->total_realisasi;
+            $hasil[$key]['total_upb'] += $r->sum_upb; // Tambahan Baru
+            $hasil[$key]['total_upk'] += $r->sum_upk; // Tambahan Baru
 
             $forecast = $hasil[$key]['forecast'];
             $realisasi = $hasil[$key]['realisasi'];
