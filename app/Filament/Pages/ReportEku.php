@@ -3,7 +3,6 @@
 namespace App\Filament\Pages;
 
 use App\Exports\ReportEkuExport;
-use App\Models\Bank;
 use App\Models\EkuTransaction;
 use App\Services\EkuReportCalculator;
 use App\Support\CurrentUser;
@@ -18,6 +17,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\HtmlString;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -35,14 +35,6 @@ class ReportEku extends Page implements HasTable
 
     protected static ?int $navigationSort = 5;
 
-    /**
-     * Cache hasil perhitungan Pengajuan/Realisasi/Deviasi per baris (per
-     * EkuTransaction) supaya tidak dihitung ulang untuk tiap kolom --
-     * 6 kolom angka di tabel ini semuanya berasal dari satu perhitungan
-     * yang sama, cukup dihitung SEKALI per baris.
-     *
-     * @var array<int, array<string, float>>
-     */
     protected array $cacheLaporan = [];
 
     public static function canAccess(): bool
@@ -65,64 +57,80 @@ class ReportEku extends Page implements HasTable
                     ->label('Nama Bank')
                     ->searchable()
                     ->sortable()
-                    // Bank sendiri sudah pasti diketahui bank itu sendiri --
-                    // kolom ini hanya relevan untuk sisi BI yang memantau
-                    // banyak bank sekaligus.
                     ->visible(fn () => $this->isPihakBi()),
 
+                // Kolom Periode: Dibuat teks biasa (tanpa badge) agar rapi
                 TextColumn::make('periode')
                     ->label('Periode')
-                    ->badge()
-                    ->color('gray')
                     ->sortable(),
 
                 TextColumn::make('pengajuan_setoran')
                     ->label('Pengajuan Setoran')
                     ->alignEnd()
-                    ->state(fn (EkuTransaction $record) => $this->laporanUntuk($record)['setoranTotal'])
-                    ->formatStateUsing(fn (float $state) => $this->rupiah($state)),
+                    ->getStateUsing(fn (EkuTransaction $record) => $this->laporanUntuk($record)['setoranTotal'] ?? 0)
+                    ->formatStateUsing(fn ($state) => $this->rupiah((float) $state)),
 
                 TextColumn::make('pengajuan_penarikan')
                     ->label('Pengajuan Penarikan')
                     ->alignEnd()
-                    ->state(fn (EkuTransaction $record) => $this->laporanUntuk($record)['penarikanTotal'])
-                    ->formatStateUsing(fn (float $state) => $this->rupiah($state)),
+                    ->getStateUsing(fn (EkuTransaction $record) => $this->laporanUntuk($record)['penarikanTotal'] ?? 0)
+                    ->formatStateUsing(fn ($state) => $this->rupiah((float) $state)),
 
                 TextColumn::make('realisasi_setoran')
                     ->label('Realisasi Setoran (YTD)')
                     ->alignEnd()
-                    ->state(fn (EkuTransaction $record) => $this->laporanUntuk($record)['realisasiSetoran'])
-                    ->formatStateUsing(fn (float $state) => $this->rupiah($state)),
+                    ->getStateUsing(fn (EkuTransaction $record) => $this->laporanUntuk($record)['realisasiSetoran'] ?? 0)
+                    ->formatStateUsing(fn ($state) => $this->rupiah((float) $state)),
 
                 TextColumn::make('realisasi_penarikan')
                     ->label('Realisasi Penarikan (YTD)')
                     ->alignEnd()
-                    ->state(fn (EkuTransaction $record) => $this->laporanUntuk($record)['realisasiPenarikan'])
-                    ->formatStateUsing(fn (float $state) => $this->rupiah($state)),
+                    ->getStateUsing(fn (EkuTransaction $record) => $this->laporanUntuk($record)['realisasiPenarikan'] ?? 0)
+                    ->formatStateUsing(fn ($state) => $this->rupiah((float) $state)),
 
+                // Deviasi Setoran dengan Badge HTML agar sama dengan halaman Realisasi
                 TextColumn::make('deviasi_setoran')
                     ->label('Deviasi Setoran')
                     ->alignEnd()
-                    ->state(fn (EkuTransaction $record) => $this->laporanUntuk($record)['deviasiSetoran'])
-                    ->formatStateUsing(fn (float $state) => $this->rupiah($state))
-                    ->color(fn (float $state) => match (true) {
-                        $state > 0 => 'warning', // Realisasi < Pengajuan (kurang)
-                        $state < 0 => 'danger',  // Realisasi > Pengajuan (over)
-                        default => 'success',
-                    })
-                    ->weight('semibold'),
+                    ->html()
+                    ->getStateUsing(fn (EkuTransaction $record) => $this->laporanUntuk($record)['deviasiSetoran'] ?? 0)
+                    ->formatStateUsing(function ($state) {
+                        $val = (float) $state;
+                        $nominal = 'Rp ' . number_format(abs($val), 0, ',', '.');
 
+                        if ($val < 0) {
+                            $badge = '<span class="ml-2 px-2 py-0.5 rounded-md text-[11px] font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400">Over</span>';
+                            $nominal = '(Mines) ' . $nominal;
+                        } elseif ($val > 0) {
+                            $badge = '<span class="ml-2 px-2 py-0.5 rounded-md text-[11px] font-bold bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400">Sisa</span>';
+                        } else {
+                            $badge = '<span class="ml-2 px-2 py-0.5 rounded-md text-[11px] font-bold bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400">Sesuai</span>';
+                        }
+
+                        return new HtmlString("<div class='flex items-center justify-end whitespace-nowrap'>{$nominal} {$badge}</div>");
+                    }),
+
+                // Deviasi Penarikan dengan Badge HTML agar sama dengan halaman Realisasi
                 TextColumn::make('deviasi_penarikan')
                     ->label('Deviasi Penarikan')
                     ->alignEnd()
-                    ->state(fn (EkuTransaction $record) => $this->laporanUntuk($record)['deviasiPenarikan'])
-                    ->formatStateUsing(fn (float $state) => $this->rupiah($state))
-                    ->color(fn (float $state) => match (true) {
-                        $state > 0 => 'warning',
-                        $state < 0 => 'danger',
-                        default => 'success',
-                    })
-                    ->weight('semibold'),
+                    ->html()
+                    ->getStateUsing(fn (EkuTransaction $record) => $this->laporanUntuk($record)['deviasiPenarikan'] ?? 0)
+                    ->formatStateUsing(function ($state) {
+                        $val = (float) $state;
+                        $nominal = 'Rp ' . number_format(abs($val), 0, ',', '.');
+
+                        if ($val < 0) {
+                            $badge = '<span class="ml-2 px-2 py-0.5 rounded-md text-[11px] font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400">Over</span>';
+                            $nominal = '(Mines) ' . $nominal;
+                        } elseif ($val > 0) {
+                            $badge = '<span class="ml-2 px-2 py-0.5 rounded-md text-[11px] font-bold bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400">Sisa</span>';
+                        } else {
+                            $badge = '<span class="ml-2 px-2 py-0.5 rounded-md text-[11px] font-bold bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400">Sesuai</span>';
+                        }
+
+                        return new HtmlString("<div class='flex items-center justify-end whitespace-nowrap'>{$nominal} {$badge}</div>");
+                    }),
             ])
             ->filters([
                 SelectFilter::make('bank_id')
@@ -130,9 +138,6 @@ class ReportEku extends Page implements HasTable
                     ->relationship('bank', 'name')
                     ->searchable()
                     ->preload()
-                    // Bank hanya bisa melihat datanya sendiri (dipaksa lewat
-                    // getTableQueryBase()), jadi filter ini cuma berguna
-                    // untuk BI yang memantau banyak bank.
                     ->visible(fn () => $this->isPihakBi()),
 
                 SelectFilter::make('periode_filter')
@@ -186,22 +191,14 @@ class ReportEku extends Page implements HasTable
             ->paginated([10, 25, 50, 100]);
     }
 
-    /**
-     * Query dasar tabel -- WAJIB melalui method ini, jangan query
-     * EkuTransaction langsung di tempat lain pada halaman ini, supaya
-     * pembatasan akses per-role tetap konsisten di satu tempat.
-     */
     protected function getTableQueryBase(): Builder
     {
         $user = CurrentUser::get();
 
         $query = EkuTransaction::query()
             ->with(['bank', 'details', 'realisasiHistory.details'])
-            // Laporan hanya relevan untuk pengajuan yang sudah final/disetujui,
-            // konsisten dengan modul Realisasi & Deviasi EKU lainnya.
             ->where('status', EkuTransaction::STATUS_DISETUJUI);
 
-        // WAJIB: User Perbankan hanya boleh melihat data bank-nya sendiri.
         if ($user?->isUserPerbankan()) {
             $query->where('bank_id', $user->bank_id);
         }
@@ -216,11 +213,6 @@ class ReportEku extends Page implements HasTable
         return (bool) ($user?->isAdminBi() || $user?->isUserBi());
     }
 
-    /**
-     * Ambil hasil perhitungan laporan untuk satu baris (delegasi penuh ke
-     * EkuReportCalculator supaya angka di tabel, Excel, dan PDF selalu
-     * konsisten satu sama lain -- lihat app/Services/EkuReportCalculator.php).
-     */
     protected function laporanUntuk(EkuTransaction $record): array
     {
         return $this->cacheLaporan[$record->id] ??= EkuReportCalculator::hitung($record);
@@ -233,11 +225,6 @@ class ReportEku extends Page implements HasTable
         return $prefix . number_format(abs($value), 0, ',', '.');
     }
 
-    /**
-     * Ambil SEMUA baris yang cocok dengan filter tabel yang sedang aktif
-     * (bukan cuma halaman yang sedang tampil) -- dipakai oleh tombol
-     * "Unduh ... Semua" di header tabel.
-     */
     protected function getFilteredRowsForExport(): Collection
     {
         return $this->getFilteredTableQuery()->get();
@@ -279,8 +266,8 @@ class ReportEku extends Page implements HasTable
 
         $kelasDeviasi = function (float $deviasi): string {
             return match (true) {
-                $deviasi > 0 => 'deviasi-kurang', // realisasi masih kurang dari pengajuan
-                $deviasi < 0 => 'deviasi-over',   // realisasi melebihi pengajuan
+                $deviasi > 0 => 'deviasi-kurang',
+                $deviasi < 0 => 'deviasi-over',
                 default => 'deviasi-sesuai',
             };
         };

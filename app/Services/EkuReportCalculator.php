@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\EkuTransaction;
+use App\Models\EkuTransactionRealisasiDetail;
 use Illuminate\Support\Collection;
 
 class EkuReportCalculator
@@ -18,14 +19,13 @@ class EkuReportCalculator
 
     /**
      * Hitung satu baris laporan lengkap untuk satu EkuTransaction.
-     *
-     * WAJIB eager-load relasi 'details' dan 'realisasiHistory.details'
-     * sebelum memanggil ini (lihat EkuTransaction::with([...])), supaya
-     * tidak terjadi N+1 query saat dipanggil berulang untuk banyak baris.
      */
     public static function hitung(EkuTransaction $record): array
     {
-        $realisasiDetails = $record->realisasiHistory->flatMap->details;
+        // PERBAIKAN: Ambil ID dari riwayat, lalu tarik data detail secara langsung.
+        // Ini menjamin 100% data realisasi terbaca tanpa takut bug Eager Loading.
+        $realisasiIds = $record->realisasiHistory->pluck('id');
+        $realisasiDetails = EkuTransactionRealisasiDetail::whereIn('eku_transaction_realisasi_id', $realisasiIds)->get();
 
         $bulanRealisasiSetoran = $realisasiDetails
             ->where('jenis_file', 'Setoran')
@@ -43,14 +43,11 @@ class EkuReportCalculator
         $detailSetoran = $record->details->where('jenis_file', 'Setoran');
         $detailPenarikan = $record->details->where('jenis_file', 'Penarikan');
 
-        // Pengajuan (Forecast) YTD -- HANYA bulan yang sudah ada Realisasi-nya,
-        // supaya dibandingkan apple-to-apple dengan Realisasi.
+        // Pengajuan (Forecast) YTD
         $pengajuanSetoranYtd = (float) $detailSetoran->whereIn('bulan', $bulanRealisasiSetoran)->sum('subtotal');
         $pengajuanPenarikanYtd = (float) $detailPenarikan->whereIn('bulan', $bulanRealisasiPenarikan)->sum('subtotal');
 
-        // Pengajuan (Forecast) SETAHUN PENUH -- dipakai untuk kolom
-        // UPB/UPK/Logam & Grand Total di laporan ringkasan (bukan YTD,
-        // karena ini menggambarkan total rencana pengajuan tahun berjalan).
+        // Pengajuan (Forecast) SETAHUN PENUH
         $setoranUpb = self::sumPecahan($detailSetoran, self::KOLOM_UPB);
         $setoranUpk = self::sumPecahan($detailSetoran, self::KOLOM_UPK);
         $setoranLogam = self::sumPecahan($detailSetoran, self::KOLOM_LOGAM);
@@ -69,8 +66,8 @@ class EkuReportCalculator
             'pengajuanPenarikan' => $pengajuanPenarikanYtd,
             'realisasiSetoran' => $realisasiSetoran,
             'realisasiPenarikan' => $realisasiPenarikan,
-            'deviasiSetoran' => $pengajuanSetoranYtd - $realisasiSetoran,
-            'deviasiPenarikan' => $pengajuanPenarikanYtd - $realisasiPenarikan,
+            'deviasiSetoran' => $setoranTotal - $realisasiSetoran,
+            'deviasiPenarikan' => $penarikanTotal - $realisasiPenarikan,
 
             'setoranUpb' => $setoranUpb,
             'setoranUpk' => $setoranUpk,
@@ -88,9 +85,6 @@ class EkuReportCalculator
 
     /**
      * Hitung banyak baris sekaligus (dipakai untuk export "Semua").
-     *
-     * @param  Collection<int, EkuTransaction>  $records
-     * @return Collection<int, array>
      */
     public static function hitungBanyak(Collection $records): Collection
     {
@@ -99,15 +93,12 @@ class EkuReportCalculator
 
     /**
      * Rincian mentah per-bulan (dipakai untuk sheet "Rincian Data Mentah"
-     * di Excel) -- satu baris per kombinasi Bulan + Jenis File + Sumber
-     * data (Pengajuan/Realisasi), lengkap dengan breakdown UPB/UPK/Logam.
-     *
-     * @return Collection<int, array>
      */
     public static function rincianMentah(EkuTransaction $record): Collection
     {
         $baris = collect();
 
+        // 1. Ekstrak Data Pengajuan (Forecast)
         foreach ($record->details as $detail) {
             $baris->push([
                 'bank' => $record->bank?->name ?? '-',
@@ -122,7 +113,12 @@ class EkuReportCalculator
             ]);
         }
 
-        foreach ($record->realisasiHistory->flatMap->details as $detail) {
+        // PERBAIKAN: Ambil data Realisasi langsung dengan ID nya
+        $realisasiIds = $record->realisasiHistory->pluck('id');
+        $realisasiDetails = EkuTransactionRealisasiDetail::whereIn('eku_transaction_realisasi_id', $realisasiIds)->get();
+
+        // 2. Ekstrak Data Realisasi
+        foreach ($realisasiDetails as $detail) {
             $baris->push([
                 'bank' => $record->bank?->name ?? '-',
                 'periode' => $record->periode,
@@ -146,14 +142,22 @@ class EkuReportCalculator
 
     protected static function jumlahKolom($detail, array $kolom): float
     {
-        if ($kolom === self::KOLOM_UPB && isset($detail->total_upb) && (float) $detail->total_upb > 0) {
-            return (float) $detail->total_upb;
+        // Cek jika datanya adalah tipe Realisasi (memiliki kolom total_upb)
+        $detailArray = is_array($detail) ? $detail : $detail->toArray();
+
+        if ($kolom === self::KOLOM_UPB && array_key_exists('total_upb', $detailArray)) {
+            return (float) ($detail->total_upb ?? 0);
         }
 
-        if ($kolom === self::KOLOM_UPK && isset($detail->total_upk) && (float) $detail->total_upk > 0) {
-            return (float) $detail->total_upk;
+        if ($kolom === self::KOLOM_UPK && array_key_exists('total_upk', $detailArray)) {
+            return (float) ($detail->total_upk ?? 0);
         }
 
+        if ($kolom === self::KOLOM_LOGAM && array_key_exists('total_upb', $detailArray)) {
+            return 0; // Karena realisasi harian BI Sulsel tidak mencatat uang logam
+        }
+
+        // Fallback untuk Pengajuan (Forecast) yang masih memiliki kolom granular kertas_100k dsb
         return (float) collect($kolom)->sum(fn (string $k) => (float) ($detail->{$k} ?? 0));
     }
 }
