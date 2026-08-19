@@ -143,13 +143,28 @@ class RealisasiEkuResource extends Resource
             ->defaultSort('created_at', 'desc')
 
             ->filters([
+                // Filter 1: Filter Bank (Hanya untuk BI)
                 SelectFilter::make('bank_id')
                     ->label('Filter Bank')
-                    ->relationship('bank', 'name') // Mengambil daftar nama bank langsung dari relasi
-                    ->searchable() // Bisa diketik/dicari
-                    ->preload() // Memuat daftar bank lebih cepat
-                    // Sembunyikan filter ini jika yang login adalah User Perbankan
+                    ->relationship('bank', 'name')
+                    ->searchable()
+                    ->preload()
                     ->visible(fn () => !CurrentUser::get()?->isUserPerbankan()),
+
+                // Filter 2: Filter Periode / Tahun (Untuk semua User)
+                SelectFilter::make('periode')
+                    ->label('Filter Periode')
+                    ->options(function () {
+                        // Mengambil daftar tahun secara otomatis dari data yang ada di database
+                        return \App\Models\EkuTransaction::query()
+                            ->select('periode')
+                            ->distinct() // Menghindari tahun kembar (duplikat)
+                            ->orderBy('periode', 'desc') // Urutkan dari tahun terbaru
+                            ->pluck('periode', 'periode')
+                            ->toArray();
+                    })
+                    ->searchable()
+                    ->preload(),
             ])
             ->actions([
                 ViewAction::make()
