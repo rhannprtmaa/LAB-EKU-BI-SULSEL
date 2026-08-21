@@ -7,6 +7,7 @@ use App\Models\EkuTransaction;
 use App\Models\EkuTransactionDetail;
 use App\Models\User;
 use App\Support\CurrentUser;
+use App\Services\EkuReportCalculator; // <-- Ditambahkan agar kalkulasinya sama dengan Reporting
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -38,7 +39,7 @@ class Dashboard extends BaseDashboard implements HasForms
         ]);
     }
 
-public function form(Schema $schema): Schema
+    public function form(Schema $schema): Schema
     {
         return $schema
             ->components([
@@ -47,7 +48,7 @@ public function form(Schema $schema): Schema
                     ->live()
                     ->options([
                         'forecast_eku' => 'Forecast EKU',
-                        'realisasi_deviasi' => 'Realisasi & Deviasi EKU', // DIGABUNG DI SINI
+                        'realisasi_deviasi' => 'Realisasi & Deviasi EKU',
                         'tukab' => 'Tukab (segera hadir)',
                     ]),
 
@@ -66,6 +67,7 @@ public function form(Schema $schema): Schema
             ->columns(3)
             ->statePath('data');
     }
+
     public function isInternalBi(): bool
     {
         $user = CurrentUser::get();
@@ -297,7 +299,7 @@ public function form(Schema $schema): Schema
     }
 
     /**
-     * MENGHITUNG KOMPOSISI UPB VS UPK DARI TABEL DETAIL REALISASI TERBARU
+     * PERBAIKAN 1: Menarik data UPB & UPK dari tabel RealisasiDetail terbaru
      */
     protected function realisasiChartData(): array
     {
@@ -305,23 +307,10 @@ public function form(Schema $schema): Schema
             ->where('status', \App\Models\EkuTransaction::STATUS_DISETUJUI)
             ->pluck('id');
 
-        $totalUpb = 0.0;
-        $totalUpk = 0.0;
+        $realisasiIds = \App\Models\EkuTransactionRealisasi::whereIn('eku_transaction_id', $approvedIds)->pluck('id');
 
-        \App\Models\EkuTransaction::query()
-            ->whereIn('id', $approvedIds)
-            // UBAH INI: Ambil SEMUA history, bukan cuma yang terbaru
-            ->with('realisasiHistory.details')
-            ->get()
-            ->each(function (\App\Models\EkuTransaction $trx) use (&$totalUpb, &$totalUpk) {
-                // UBAH INI: Looping semua history yang ada
-                foreach ($trx->realisasiHistory as $realisasi) {
-                    foreach ($realisasi->details as $detail) {
-                        $totalUpb += (float) ($detail->kertas_100k + $detail->kertas_50k);
-                        $totalUpk += (float) ($detail->kertas_20k + $detail->kertas_10k + $detail->kertas_5k + $detail->kertas_2k + $detail->kertas_1k + $detail->logam_1k + $detail->logam_500 + $detail->logam_200 + $detail->logam_100);
-                    }
-                }
-            });
+        $totalUpb = (float) \App\Models\EkuTransactionRealisasiDetail::whereIn('eku_transaction_realisasi_id', $realisasiIds)->sum('total_upb');
+        $totalUpk = (float) \App\Models\EkuTransactionRealisasiDetail::whereIn('eku_transaction_realisasi_id', $realisasiIds)->sum('total_upk');
 
         return [
             'labels' => ['UPB (100k & 50k)', 'UPK (≤ 20k & Logam)'],
@@ -329,6 +318,10 @@ public function form(Schema $schema): Schema
             'colors' => ['#3b82f6', '#10b981'],
         ];
     }
+
+    /**
+     * PERBAIKAN 2: Menggunakan EkuReportCalculator agar 100% konsisten dengan tabel Reporting
+     */
     protected function deviasiChartData(): array
     {
         $approvedIds = (clone $this->scopedTransactionsQuery())
@@ -340,20 +333,28 @@ public function form(Schema $schema): Schema
 
         EkuTransaction::query()
             ->whereIn('id', $approvedIds)
-            ->with('realisasiTerbaru')
             ->get()
             ->each(function (EkuTransaction $trx) use (&$totalUnderRealisasi, &$totalOverRealisasi) {
-                foreach ($trx->hitungDeviasi() as $baris) {
-                    if ($baris['deviasi'] > 0) {
-                        $totalUnderRealisasi += $baris['deviasi'];
-                    } elseif ($baris['deviasi'] < 0) {
-                        $totalOverRealisasi += abs($baris['deviasi']);
-                    }
+                // Gunakan Kalkulator yang sama dengan Halaman Reporting EKU
+                $laporan = EkuReportCalculator::hitung($trx);
+
+                // Cek Deviasi Setoran
+                if ($laporan['deviasiSetoran'] > 0) {
+                    $totalUnderRealisasi += $laporan['deviasiSetoran'];
+                } elseif ($laporan['deviasiSetoran'] < 0) {
+                    $totalOverRealisasi += abs($laporan['deviasiSetoran']);
+                }
+
+                // Cek Deviasi Penarikan
+                if ($laporan['deviasiPenarikan'] > 0) {
+                    $totalUnderRealisasi += $laporan['deviasiPenarikan'];
+                } elseif ($laporan['deviasiPenarikan'] < 0) {
+                    $totalOverRealisasi += abs($laporan['deviasiPenarikan']);
                 }
             });
 
         return [
-            'labels' => ['Under-Realisasi', 'Over-Realisasi'],
+            'labels' => ['Sisa Target (Under)', 'Over Realisasi'],
             'values' => [$totalUnderRealisasi, $totalOverRealisasi],
             'colors' => ['#f59e0b', '#ef4444'], // Kuning dan Merah
         ];
@@ -379,7 +380,7 @@ public function form(Schema $schema): Schema
         $radius = 80;
         $strokeWidth = 30;
         $circumference = 2 * M_PI * $radius;
-        
+
         $kosong = [
             'hasData' => false,
             'slices' => [],

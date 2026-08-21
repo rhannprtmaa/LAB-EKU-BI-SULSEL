@@ -39,7 +39,7 @@ class RingkasanTahunanSheet implements FromCollection, ShouldAutoSize, WithColum
             'Setoran - UPB', 'Setoran - UPK', 'Setoran - Logam', 'Total Setoran',
             'Penarikan - UPB', 'Penarikan - UPK', 'Penarikan - Logam', 'Total Penarikan',
             'Grand Total',
-            'Realisasi Setoran (YTD)', 'Realisasi Penarikan (YTD)',
+            'Realisasi Setoran', 'Realisasi Penarikan',
             'Deviasi Setoran', 'Deviasi Penarikan',
         ];
     }
