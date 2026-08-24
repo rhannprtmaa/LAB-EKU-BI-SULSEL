@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\RealisasiEkus\Schemas;
 
+use App\Support\UploadedFileNaming;
 use Filament\Forms\Form;
 use Filament\Forms\Components\FileUpload;
 
@@ -17,6 +18,7 @@ class RealisasiEkuForm
                     ->label('Upload File Realisasi')
                     ->disk('public')
                     ->directory('realisasi-files')
+                    ->getUploadedFileNameForStorageUsing(UploadedFileNaming::bersih())
                     ->required()
                     ->columnSpanFull(),
             ]);

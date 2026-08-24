@@ -8,6 +8,7 @@ use App\Models\EkuTransaction;
 use App\Models\EkuTransactionRealisasi;
 use App\Models\EkuTransactionRealisasiDetail;
 use App\Support\CurrentUser;
+use App\Support\UploadedFileNaming;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Forms\Components\Select;
@@ -27,7 +28,7 @@ class ListRealisasiEkus extends ListRecords
                 ->label('Download Template')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
-                ->action(fn () => Excel::download(new RealisasiTemplateExport(), 'Template_Realisasi_Harian.xlsx')),
+                ->action(fn () => Excel::download(new RealisasiTemplateExport(), 'template-realisasi-harian.xlsx')),
 
             Actions\Action::make('upload_realisasi')
                 ->label('Upload Realisasi Massal')
@@ -67,6 +68,7 @@ class ListRealisasiEkus extends ListRecords
                         ->label('File Excel Realisasi')
                         ->disk('public')
                         ->directory('realisasi-eku/massal')
+                        ->getUploadedFileNameForStorageUsing(UploadedFileNaming::bersih())
                         ->acceptedFileTypes(['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])
                         ->required(),
                 ])

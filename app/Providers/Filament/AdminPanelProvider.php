@@ -6,9 +6,11 @@ use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\KnowledgeCenter;
 use App\Filament\Pages\ManagementEku;
+use App\Filament\Pages\Profile;
 use App\Filament\Pages\ReportEku;
 use App\Filament\Resources\EkuTransactions\EkuTransactionResource;
 use App\Filament\Resources\RealisasiEkus\RealisasiEkuResource;
+use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -62,6 +64,13 @@ class AdminPanelProvider extends PanelProvider
                 ReportEku::class,
                 KnowledgeCenter::class,
                 ViewBatasanBank::class,
+                Profile::class,
+            ])
+
+            // --- Menu Akun (baris nama akun di dropdown user menu diarahkan ke Profil) ---
+            ->userMenuItems([
+                'profile' => fn (Action $action) => $action
+                    ->url(fn (): string => Profile::getUrl()),
             ])
 
             // --- Middleware Configuration ---

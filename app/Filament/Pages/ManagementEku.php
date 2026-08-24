@@ -7,6 +7,7 @@ use App\Models\EkuDeadline;
 use App\Models\EkuTemplate;
 use App\Support\CurrentUser;
 use App\Support\EkuExcelParser;
+use App\Support\UploadedFileNaming;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -97,6 +98,7 @@ class ManagementEku extends Page implements HasForms, HasTable
                                     ->label('Pilih File Excel')
                                     ->disk('public')
                                     ->directory('batasan-bank/setoran')
+                                    ->getUploadedFileNameForStorageUsing(UploadedFileNaming::bersih())
                                     ->acceptedFileTypes([
                                         'application/vnd.ms-excel',
                                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -144,6 +146,7 @@ class ManagementEku extends Page implements HasForms, HasTable
                                     ->label('Pilih File Excel')
                                     ->disk('public')
                                     ->directory('batasan-bank/penarikan')
+                                    ->getUploadedFileNameForStorageUsing(UploadedFileNaming::bersih())
                                     ->acceptedFileTypes([
                                         'application/vnd.ms-excel',
                                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -226,6 +229,7 @@ class ManagementEku extends Page implements HasForms, HasTable
                             ->label('File Template Setoran (Excel)')
                             ->disk('public')
                             ->directory('template-eku')
+                            ->getUploadedFileNameForStorageUsing(UploadedFileNaming::bersih())
                             ->acceptedFileTypes([
                                 'application/vnd.ms-excel',
                                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -239,6 +243,7 @@ class ManagementEku extends Page implements HasForms, HasTable
                             ->label('File Template Penarikan (Excel)')
                             ->disk('public')
                             ->directory('template-eku')
+                            ->getUploadedFileNameForStorageUsing(UploadedFileNaming::bersih())
                             ->acceptedFileTypes([
                                 'application/vnd.ms-excel',
                                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

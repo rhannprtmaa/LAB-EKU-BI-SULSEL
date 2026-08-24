@@ -5,6 +5,7 @@ namespace App\Filament\Resources\KnowledgePosts;
 use App\Filament\Resources\KnowledgePosts\Pages;
 use App\Models\KnowledgePost;
 use App\Support\CurrentUser;
+use App\Support\UploadedFileNaming;
 use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -46,7 +47,7 @@ class KnowledgePostResource extends Resource
     }
 
     public static function canEdit(Model $record): bool
-    { 
+    {
         return CurrentUser::get()?->isAdminBi() ?? false;
     }
 
@@ -95,6 +96,7 @@ class KnowledgePostResource extends Resource
                     ->label('Gambar Sampul (Thumbnail)')
                     ->disk('public')
                     ->directory('knowledge-center/thumbnails')
+                    ->getUploadedFileNameForStorageUsing(UploadedFileNaming::bersih())
                     ->image()
                     ->columnSpan(1),
 
@@ -102,6 +104,7 @@ class KnowledgePostResource extends Resource
                     ->label('Dokumen Lampiran (PDF/Excel - Opsional)')
                     ->disk('public')
                     ->directory('knowledge-center/attachments')
+                    ->getUploadedFileNameForStorageUsing(UploadedFileNaming::bersih())
                     ->columnSpan(1),
 
                 Toggle::make('is_featured')

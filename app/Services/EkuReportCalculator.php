@@ -135,6 +135,22 @@ class EkuReportCalculator
         return $baris;
     }
 
+    /**
+     * Wrapper publik: hitung UPB & UPK untuk SATU baris detail (dipakai
+     * di luar class ini, misalnya PDF "Detail Input Realisasi" pada
+     * Riwayat Input Realisasi), pakai logic yang sama persis dengan
+     * jumlahKolom() supaya konsisten dengan Report EKU.
+     *
+     * @return array{upb: float, upk: float}
+     */
+    public static function upbUpk($detail): array
+    {
+        return [
+            'upb' => self::jumlahKolom($detail, self::KOLOM_UPB),
+            'upk' => self::jumlahKolom($detail, self::KOLOM_UPK),
+        ];
+    }
+
     protected static function sumPecahan(Collection $details, array $kolom): float
     {
         return (float) $details->sum(fn ($detail) => self::jumlahKolom($detail, $kolom));

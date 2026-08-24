@@ -3,13 +3,17 @@
 namespace App\Filament\Resources\RealisasiEkus\RelationManagers;
 
 use App\Models\EkuTransactionRealisasiDetail;
+use App\Services\EkuReportCalculator;
 use App\Support\CurrentUser;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class HistoryRelationManager extends RelationManager
 {
@@ -91,9 +95,65 @@ class HistoryRelationManager extends RelationManager
                 // Kosong, karena tombol Create/Input Manual ditiadakan
             ])
             ->actions([
+                Action::make('unduh_pdf')
+                    ->label('Unduh PDF')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('danger')
+                    ->action(fn ($record): StreamedResponse => $this->unduhPdf($record)),
+
                DeleteAction::make()
                     ->visible(fn () => (bool) CurrentUser::get()?->isAdminBi()),
             ])
             ->bulkActions([]);
+    }
+
+    /**
+     * Generate PDF rincian SATU input realisasi (satu baris tabel
+     * "Riwayat Input Realisasi" = satu record EkuTransactionRealisasi,
+     * yang bisa punya banyak detail bulan+jenis sekaligus).
+     */
+    protected function unduhPdf($record): StreamedResponse
+    {
+        $transaksi = $record->ekuTransaction;
+
+        $rincian = $record->details
+            ->sortBy([['bulan', 'asc'], ['jenis_file', 'asc']])
+            ->map(function (EkuTransactionRealisasiDetail $detail) {
+                $upbUpk = EkuReportCalculator::upbUpk($detail);
+
+                return [
+                    'bulan' => $detail->bulan,
+                    'jenis_file' => $detail->jenis_file,
+                    'upb' => $upbUpk['upb'],
+                    'upk' => $upbUpk['upk'],
+                    'subtotal' => (float) $detail->subtotal,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $rupiah = fn (float $v) => 'Rp ' . number_format($v, 0, ',', '.');
+
+        $pdf = Pdf::loadView('pdf.realisasi-detail', [
+            'bankName' => $transaksi?->bank?->name ?? '-',
+            'periode' => $transaksi?->periode ?? '-',
+            'tanggalInput' => $record->input_at
+                ? $record->input_at->locale('id')->translatedFormat('d F Y, H:i') . ' WITA'
+                : '-',
+            'diinputOleh' => $record->inputBy?->name ?? '-',
+            'keterangan' => $record->keterangan,
+            'totalSetoran' => (float) ($record->total_setoran ?? 0),
+            'totalPenarikan' => (float) ($record->total_penarikan ?? 0),
+            'rincian' => $rincian,
+            'rupiah' => $rupiah,
+        ])->setPaper('a4', 'portrait');
+
+        $namaFile = 'realisasi-' . str($transaksi?->bank?->name ?? 'bank')->slug() . '-' . $record->id . '.pdf';
+
+        return response()->streamDownload(
+            fn () => print ($pdf->output()),
+            $namaFile,
+            ['Content-Type' => 'application/pdf'],
+        );
     }
 }

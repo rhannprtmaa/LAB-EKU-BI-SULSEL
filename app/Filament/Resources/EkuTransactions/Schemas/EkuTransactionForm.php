@@ -5,6 +5,7 @@ namespace App\Filament\Resources\EkuTransactions\Schemas;
 use App\Models\EkuDeadline;
 use App\Models\EkuTransaction;
 use App\Support\CurrentUser;
+use App\Support\UploadedFileNaming;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -18,11 +19,6 @@ use Illuminate\Support\HtmlString;
 
 class EkuTransactionForm
 {
-    protected static function namaFileAsli(): \Closure
-    {
-        return fn ($file) => date('YmdHis') . '_' . $file->getClientOriginalName();
-    }
-
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -95,7 +91,7 @@ class EkuTransactionForm
                     ->disk('public')
                     ->directory('pengajuan-eku/setoran')
                     ->visibility('public')
-                    ->getUploadedFileNameForStorageUsing(static::namaFileAsli())
+                    ->getUploadedFileNameForStorageUsing(UploadedFileNaming::bersih())
                     ->acceptedFileTypes([
                         'application/vnd.ms-excel',
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -107,7 +103,7 @@ class EkuTransactionForm
                     ->disk('public')
                     ->directory('pengajuan-eku/penarikan')
                     ->visibility('public')
-                    ->getUploadedFileNameForStorageUsing(static::namaFileAsli())
+                    ->getUploadedFileNameForStorageUsing(UploadedFileNaming::bersih())
                     ->acceptedFileTypes([
                         'application/vnd.ms-excel',
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -118,7 +114,7 @@ class EkuTransactionForm
                     ->label('File Lampiran (PDF / Pendukung)')
                     ->disk('public')
                     ->directory('pengajuan-eku/lampiran')
-                    ->getUploadedFileNameForStorageUsing(static::namaFileAsli())
+                    ->getUploadedFileNameForStorageUsing(UploadedFileNaming::bersih())
                     ->acceptedFileTypes(['application/pdf', 'image/*'])
                     ->maxSize(10240)
                     ->columnSpanFull(),

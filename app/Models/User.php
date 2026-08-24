@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasAvatar;
 use Filament\Panel;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable implements FilamentUser, HasAvatar
 {
     use Notifiable;
 
@@ -44,6 +46,16 @@ class User extends Authenticatable implements FilamentUser
     public function canAccessPanel(Panel $panel): bool
     {
         return $this->is_active;
+    }
+
+    // Dipakai Filament untuk menampilkan foto profil di sidebar/menu user.
+    public function getFilamentAvatarUrl(): ?string
+    {
+        if (! $this->avatar_url) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->avatar_url);
     }
 
     // Helper method untuk cek role pengguna

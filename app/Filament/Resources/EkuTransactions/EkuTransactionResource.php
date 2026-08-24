@@ -77,7 +77,7 @@ class EkuTransactionResource extends Resource
     {
         $user = CurrentUser::get();
 
-        if ($user?->isAdminBi()) {
+        if ($user?->isAdminBi() || $user?->isUserBi()) {
             return true;
         }
 
