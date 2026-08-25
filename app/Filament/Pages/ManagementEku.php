@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\Bank;
 use App\Models\EkuDeadline;
 use App\Models\EkuTemplate;
+use App\Services\NotifikasiService;
 use App\Support\CurrentUser;
 use App\Support\EkuExcelParser;
 use App\Support\UploadedFileNaming;
@@ -126,6 +127,8 @@ class ManagementEku extends Page implements HasForms, HasTable
                                     fn ($transaksi) => $transaksi->terapkanBatasanBank()
                                 );
 
+                                NotifikasiService::batasanEkuDiubah($record, 'Batasan Setoran diperbarui via file Excel.');
+
                                 Notification::make()->title('File Batasan Setoran berhasil diunggah dan totalnya dihitung ulang!')->success()->send();
                             })
                     ),
@@ -167,6 +170,8 @@ class ManagementEku extends Page implements HasForms, HasTable
                                     fn ($transaksi) => $transaksi->terapkanBatasanBank()
                                 );
 
+                                NotifikasiService::batasanEkuDiubah($record, 'Batasan Penarikan diperbarui via file Excel.');
+
                                 Notification::make()->title('File Batasan Penarikan berhasil diunggah dan totalnya dihitung ulang!')->success()->send();
                             })
                     ),
@@ -198,6 +203,8 @@ class ManagementEku extends Page implements HasForms, HasTable
                         $record->ekuTransactions()->get()->each(
                             fn ($transaksi) => $transaksi->terapkanBatasanBank()
                         );
+
+                        NotifikasiService::batasanEkuDiubah($record, 'Nominal batasan diperbarui secara manual.');
                     }),
 
                 Action::make('delete_batasan')
@@ -214,6 +221,9 @@ class ManagementEku extends Page implements HasForms, HasTable
                             'file_batasan_setoran' => null,
                             'file_batasan_penarikan' => null,
                         ]);
+
+                        NotifikasiService::batasanEkuDiubah($record, 'Semua batasan EKU telah dihapus.');
+
                         Notification::make()->title('Batasan berhasil dihapus!')->success()->send();
                     }),
             ]);
@@ -310,6 +320,8 @@ class ManagementEku extends Page implements HasForms, HasTable
     {
         $state = $this->form->getState();
 
+        $jenisBerubah = [];
+
         if (! empty($state['file_setoran'])) {
             EkuTemplate::create([
                 'nama_file' => basename($state['file_setoran']),
@@ -317,6 +329,8 @@ class ManagementEku extends Page implements HasForms, HasTable
                 'file_path' => $state['file_setoran'],
                 'uploaded_by' => Auth::id(),
             ]);
+
+            $jenisBerubah[] = EkuTemplate::JENIS_SETORAN;
         }
 
         if (! empty($state['file_penarikan'])) {
@@ -326,6 +340,12 @@ class ManagementEku extends Page implements HasForms, HasTable
                 'file_path' => $state['file_penarikan'],
                 'uploaded_by' => Auth::id(),
             ]);
+
+            $jenisBerubah[] = EkuTemplate::JENIS_PENARIKAN;
+        }
+
+        if (! empty($jenisBerubah)) {
+            NotifikasiService::templateBerubah($jenisBerubah);
         }
 
         Notification::make()

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\NotifikasiService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -12,6 +13,22 @@ class EkuDeadline extends Model
     protected $casts = [
         'batas_waktu' => 'date',
     ];
+
+    protected static function booted(): void
+    {
+        static::created(function (EkuDeadline $deadline) {
+            NotifikasiService::deadlineBaruDibuat($deadline);
+        });
+
+        static::updated(function (EkuDeadline $deadline) {
+            // Hanya kirim notifikasi kalau tanggal/keterangan yang benar-benar
+            // berubah, supaya update lain (mis. pengingat_terakhir) tidak
+            // ikut memicu notifikasi "deadline diubah".
+            if ($deadline->wasChanged(['batas_waktu', 'keterangan'])) {
+                NotifikasiService::deadlineDiubah($deadline);
+            }
+        });
+    }
 
     public static function current(): ?self
     {

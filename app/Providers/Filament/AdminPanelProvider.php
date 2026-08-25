@@ -43,6 +43,10 @@ class AdminPanelProvider extends PanelProvider
             ->font('Plus Jakarta Sans', provider: GoogleFontProvider::class)
             ->favicon(asset('images/logo-bi.png'))
 
+            // --- Notifikasi dalam aplikasi (bell icon) ---
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
+
             // --- Tampilan Panel ---
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->brandName('LAB EKU SULSEL')

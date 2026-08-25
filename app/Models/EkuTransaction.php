@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Filament\Notifications\Notification;
 use App\Models\EkuDeadline;
+use App\Services\NotifikasiService;
 
 class EkuTransaction extends Model
 {
@@ -72,6 +73,18 @@ class EkuTransaction extends Model
         });
 
         static::saved(function ($transaction) {
+            // Notifikasi perubahan status (Disetujui / Perlu Revisi / Ditolak)
+            // dipantau di sini, bukan di masing-masing tombol aksi, supaya
+            // konsisten dari mana pun status itu diubah.
+            if (! $transaction->wasRecentlyCreated && $transaction->wasChanged('status')) {
+                match ($transaction->status) {
+                    self::STATUS_DISETUJUI => NotifikasiService::pengajuanDisetujui($transaction, $transaction->catatan),
+                    self::STATUS_REVISI => NotifikasiService::pengajuanPerluRevisi($transaction, (string) $transaction->catatan),
+                    self::STATUS_DITOLAK => NotifikasiService::pengajuanDitolak($transaction, (string) $transaction->catatan),
+                    default => null,
+                };
+            }
+
             if ($transaction->wasRecentlyCreated) {
                 $transaction->reprocessExcelFiles();
 

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Imports\EkuExcelImport;
+use App\Services\NotifikasiService;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +31,10 @@ class EkuTransactionRealisasi extends Model
         static::saved(function (EkuTransactionRealisasi $realisasi) {
             if ($realisasi->wasRecentlyCreated || $realisasi->wasChanged(['file_setoran', 'file_penarikan'])) {
                 $realisasi->reprocessExcelFiles();
+            }
+
+            if ($realisasi->wasRecentlyCreated) {
+                NotifikasiService::realisasiBerhasilDiupload($realisasi);
             }
         });
     }
@@ -183,4 +188,3 @@ class EkuTransactionRealisasi extends Model
         ]);
     }
     }
-

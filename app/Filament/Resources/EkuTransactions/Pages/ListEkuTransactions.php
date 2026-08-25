@@ -5,6 +5,7 @@ namespace App\Filament\Resources\EkuTransactions\Pages;
 use App\Filament\Resources\EkuTransactions\EkuTransactionResource;
 use App\Filament\Resources\EkuTransactions\Widgets\TemplateKerjaWidget;
 use App\Models\EkuTransaction;
+use App\Services\NotifikasiService;
 use App\Support\CurrentUser;
 use Filament\Actions\CreateAction;
 use Filament\Notifications\Notification;
@@ -56,7 +57,11 @@ class ListEkuTransactions extends ListRecords
                         ->first();
 
                     if (! $existing) {
-                        return EkuTransaction::create($data);
+                        $baru = EkuTransaction::create($data);
+
+                        NotifikasiService::pengajuanBerhasilDikirim($baru);
+
+                        return $baru;
                     }
 
                     if ($existing->status === EkuTransaction::STATUS_DISETUJUI) {
@@ -81,7 +86,11 @@ class ListEkuTransactions extends ListRecords
                         ->success()
                         ->send();
 
-                    return $existing->fresh();
+                    $existing = $existing->fresh();
+
+                    NotifikasiService::pengajuanBerhasilDikirim($existing);
+
+                    return $existing;
                 }),
         ];
     }
