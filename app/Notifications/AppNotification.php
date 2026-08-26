@@ -4,24 +4,20 @@ namespace App\Notifications;
 
 use Filament\Actions\Action as FilamentNotificationAction;
 use Filament\Notifications\Notification as FilamentNotification;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification as BaseNotification;
 
-class AppNotification extends BaseNotification implements ShouldQueue
+class AppNotification extends BaseNotification
 {
-    use Queueable;
-
     /**
      * @param string $judul Judul singkat notifikasi.
      * @param string $pesan Isi/deskripsi notifikasi.
-     * @param string $ikon Nama ikon heroicon (format Filament), misal 'heroicon-o-bell'.
+     * @param string $ikon Nama ikon heroicon.
      * @param string $warna Warna: primary|success|warning|danger|info|gray.
-     * @param string|null $url Link tujuan saat notifikasi diklik (opsional).
-     * @param bool $kirimEmail Apakah event ini juga dikirim ke Gmail (channel mail).
-     * @param string|null $emailBody Isi email (kalau kosong, pakai $pesan).
-     * @param string|null $emailAction Label tombol aksi di email (misal "Lihat Pengajuan").
+     * @param string|null $url Link tujuan saat notifikasi diklik.
+     * @param bool $kirimEmail Apakah event ini juga dikirim melalui email.
+     * @param string|null $emailBody Isi email. Jika null, menggunakan $pesan.
+     * @param string|null $emailAction Label tombol aksi di email.
      */
     public function __construct(
         public string $judul,
@@ -34,6 +30,12 @@ class AppNotification extends BaseNotification implements ShouldQueue
         public ?string $emailAction = null,
     ) {}
 
+    /**
+     * Channel notifikasi.
+     *
+     * Untuk testing kita gunakan database + mail secara langsung
+     * tanpa queue.
+     */
     public function via(object $notifiable): array
     {
         $channels = ['database'];
@@ -45,6 +47,9 @@ class AppNotification extends BaseNotification implements ShouldQueue
         return $channels;
     }
 
+    /**
+     * Membuat format notifikasi yang digunakan oleh Filament.
+     */
     protected function buildFilamentNotification(): FilamentNotification
     {
         $notification = FilamentNotification::make()
@@ -67,11 +72,17 @@ class AppNotification extends BaseNotification implements ShouldQueue
         return $notification;
     }
 
+    /**
+     * Data yang disimpan ke tabel notifications.
+     */
     public function toDatabase(object $notifiable): array
     {
         return $this->buildFilamentNotification()->getDatabaseMessage();
     }
 
+    /**
+     * Format email.
+     */
     public function toMail(object $notifiable): MailMessage
     {
         $mail = (new MailMessage())
@@ -80,9 +91,14 @@ class AppNotification extends BaseNotification implements ShouldQueue
             ->line($this->emailBody ?? $this->pesan);
 
         if ($this->url) {
-            $mail->action($this->emailAction ?? 'Buka Aplikasi', $this->url);
+            $mail->action(
+                $this->emailAction ?? 'Buka Aplikasi',
+                $this->url
+            );
         }
 
-        return $mail->line('Email ini dikirim otomatis oleh Sistem LAB EKU BI Sulsel, mohon tidak membalas email ini.');
+        return $mail->line(
+            'Email ini dikirim otomatis oleh Sistem LAB EKU BI Sulsel, mohon tidak membalas email ini.'
+        );
     }
 }

@@ -19,11 +19,6 @@ use Illuminate\Support\Facades\Notification as NotificationFacade;
 
 class NotifikasiService
 {
-    // ---------------------------------------------------------------
-    // Helper penerima
-    // ---------------------------------------------------------------
-
-    /** Semua user BI (admin_bi + user_bi) yang aktif. */
     protected static function userBi(): Collection
     {
         return User::query()
@@ -67,9 +62,6 @@ class NotifikasiService
         NotificationFacade::send($penerima, $notifikasi);
     }
 
-    // ---------------------------------------------------------------
-    // 1. Deadline baru dibuat
-    // ---------------------------------------------------------------
     public static function deadlineBaruDibuat(EkuDeadline $deadline): void
     {
         $tanggal = $deadline->batas_waktu?->locale('id')->translatedFormat('d F Y');
@@ -85,9 +77,6 @@ class NotifikasiService
         ));
     }
 
-    // ---------------------------------------------------------------
-    // 2. Deadline diubah
-    // ---------------------------------------------------------------
     public static function deadlineDiubah(EkuDeadline $deadline): void
     {
         $tanggal = $deadline->batas_waktu?->locale('id')->translatedFormat('d F Y');
@@ -103,9 +92,6 @@ class NotifikasiService
         ));
     }
 
-    // ---------------------------------------------------------------
-    // 3. Deadline sudah dekat (dipanggil dari scheduled command)
-    // ---------------------------------------------------------------
     public static function deadlineSudahDekat(EkuDeadline $deadline, int $sisaHari): void
     {
         $tanggal = $deadline->batas_waktu?->locale('id')->translatedFormat('d F Y');
@@ -206,9 +192,6 @@ class NotifikasiService
         ));
     }
 
-    // ---------------------------------------------------------------
-    // 8. Pengajuan berhasil dikirim (bank -> BI)
-    // ---------------------------------------------------------------
     public static function pengajuanBerhasilDikirim(EkuTransaction $transaksi): void
     {
         self::kirim(self::userBi(), new AppNotification(
@@ -222,10 +205,51 @@ class NotifikasiService
         ));
     }
 
-    // ---------------------------------------------------------------
-    // 9. Realisasi berhasil diupload (bank -> BI)
-    // ---------------------------------------------------------------
-    public static function realisasiBerhasilDiupload(EkuTransactionRealisasi $realisasi): void
+// ---------------------------------------------------------------
+// 9. Realisasi berhasil diinput oleh BI -> Bank terkait
+// ---------------------------------------------------------------
+public static function realisasiBerhasilDiupload(EkuTransactionRealisasi $realisasi): void
+{
+    $transaksi = $realisasi->ekuTransaction;
+
+    if (! $transaksi) {
+        return;
+    }
+
+    $bank = $transaksi->bank;
+
+    if (! $bank) {
+        return;
+    }
+
+    $penerima = User::query()
+        ->where('role', 'user_perbankan')
+        ->where('bank_id', $bank->id)
+        ->where('is_active', true)
+        ->get();
+
+    if ($penerima->isEmpty()) {
+        return;
+    }
+
+    $url = RealisasiEkuResource::getUrl('view', [
+        'record' => $realisasi,
+    ]);
+
+    $notifikasi = new AppNotification(
+        judul: 'Realisasi EKU Telah Diperbarui',
+        pesan: "Bank Indonesia telah menginput realisasi EKU untuk {$bank->name} pada periode {$transaksi->periode}. Silakan lihat detail realisasi EKU.",
+        ikon: 'heroicon-o-chart-bar-square',
+        warna: 'success',
+        url: $url,
+        kirimEmail: true,
+        emailAction: 'Lihat Realisasi EKU',
+    );
+
+    self::kirim($penerima, $notifikasi);
+}
+
+    public static function realisasiDiperbaruiOlehBi(EkuTransactionRealisasi $realisasi): void
     {
         $transaksi = $realisasi->ekuTransaction;
 
@@ -233,12 +257,15 @@ class NotifikasiService
             return;
         }
 
-        self::kirim(self::userBi(), new AppNotification(
-            judul: 'Realisasi EKU Baru Diupload',
-            pesan: ($transaksi->bank?->name ?? 'Sebuah bank') . " mengupload realisasi EKU untuk periode {$transaksi->periode}.",
+        $namaBank = $transaksi->bank?->name ?? 'Bank Anda';
+        $periode = $transaksi->periode ?? '-';
+
+        self::kirim(self::userBank($transaksi->bank_id), new AppNotification(
+            judul: 'Realisasi EKU Diperbarui oleh Bank Indonesia',
+            pesan: "Bank Indonesia telah memperbarui realisasi EKU untuk {$namaBank}, periode {$periode}. Silakan periksa data realisasi terbaru.",
             ikon: 'heroicon-o-chart-bar-square',
-            warna: 'primary',
-            url: RealisasiEkuResource::getUrl('view', ['record' => $transaksi]),
+            warna: 'info',
+            url: RealisasiEkuResource::getUrl('view', ['record' => $realisasi]),
             kirimEmail: true,
             emailAction: 'Lihat Realisasi',
         ));

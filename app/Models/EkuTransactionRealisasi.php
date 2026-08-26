@@ -26,18 +26,23 @@ class EkuTransactionRealisasi extends Model
         ];
     }
 
-    protected static function booted()
-    {
-        static::saved(function (EkuTransactionRealisasi $realisasi) {
-            if ($realisasi->wasRecentlyCreated || $realisasi->wasChanged(['file_setoran', 'file_penarikan'])) {
-                $realisasi->reprocessExcelFiles();
-            }
+protected static function booted()
+{
+    static::saved(function (EkuTransactionRealisasi $realisasi) {
+        $baruDibuat = $realisasi->wasRecentlyCreated;
 
-            if ($realisasi->wasRecentlyCreated) {
-                NotifikasiService::realisasiBerhasilDiupload($realisasi);
-            }
-        });
-    }
+        $fileBerubah = $realisasi->wasChanged([
+            'file_setoran',
+            'file_penarikan',
+        ]);
+
+        if ($baruDibuat || $fileBerubah) {
+            $realisasi->reprocessExcelFiles();
+
+            NotifikasiService::realisasiBerhasilDiupload($realisasi);
+        }
+    });
+}
 
     public function ekuTransaction(): BelongsTo
     {
