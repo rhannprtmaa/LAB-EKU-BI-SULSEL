@@ -1,6 +1,6 @@
 @php
     $deviasiList = $this->getDeviasi();
-    $rupiah = fn ($v) => 'Rp ' . number_format((float) $v, 0, ',', '.');
+    $rupiah = fn ($v) => \App\Support\Rupiah::format((float) $v);
 @endphp
 
 <x-filament-widgets::widget>

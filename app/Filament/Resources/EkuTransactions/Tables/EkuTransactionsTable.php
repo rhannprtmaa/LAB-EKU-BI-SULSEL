@@ -7,6 +7,7 @@ use App\Models\Bank;
 use App\Models\EkuDeadline;
 use App\Models\EkuTransaction;
 use App\Support\CurrentUser;
+use App\Support\Rupiah;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -43,39 +44,29 @@ class EkuTransactionsTable
 
                 TextColumn::make('total_setoran')
                     ->label('Total Setoran')
-                    ->numeric(
-                        decimalPlaces: 0,
-                        decimalSeparator: ',',
-                        thousandsSeparator: '.',
-                    )
+                    ->formatStateUsing(fn ($state) => is_null($state) ? '-' : Rupiah::format((float) $state))
                     ->sortable(),
 
                 TextColumn::make('total_penarikan')
                     ->label('Total Penarikan')
-                    ->numeric(
-                        decimalPlaces: 0,
-                        decimalSeparator: ',',
-                        thousandsSeparator: '.',
-                    )
+                    ->formatStateUsing(fn ($state) => is_null($state) ? '-' : Rupiah::format((float) $state))
                     ->sortable(),
 
                 TextColumn::make('total_realisasi_setoran')
                     ->label('Realisasi Setoran')
-                    ->numeric(0, ',', '.')
-                    ->placeholder('-')
+                    ->formatStateUsing(fn ($state) => is_null($state) ? '-' : Rupiah::format((float) $state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('total_realisasi_penarikan')
                     ->label('Realisasi Penarikan')
-                    ->numeric(0, ',', '.')
-                    ->placeholder('-')
+                    ->formatStateUsing(fn ($state) => is_null($state) ? '-' : Rupiah::format((float) $state))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('deviasi_setoran')
                     ->label('Deviasi Setoran')
-                    ->numeric(0, ',', '.')
+                    ->formatStateUsing(fn ($state) => is_null($state) ? '-' : Rupiah::formatMines((float) $state))
                     ->placeholder('-')
                     ->color(fn ($state) => $state < 0 ? 'danger' : ($state > 0 ? 'success' : 'gray'))
                     ->sortable()
@@ -83,7 +74,7 @@ class EkuTransactionsTable
 
                 TextColumn::make('deviasi_penarikan')
                     ->label('Deviasi Penarikan')
-                    ->numeric(0, ',', '.')
+                    ->formatStateUsing(fn ($state) => is_null($state) ? '-' : Rupiah::formatMines((float) $state))
                     ->placeholder('-')
                     ->color(fn ($state) => $state < 0 ? 'danger' : ($state > 0 ? 'success' : 'gray'))
                     ->sortable()

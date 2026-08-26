@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\RealisasiEkus\Schemas;
 
 use App\Models\EkuTransaction;
+use App\Support\Rupiah;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -42,7 +43,7 @@ class RealisasiEkuInfolist
                     $data = collect($record->hitungDeviasi());
                     return $data->where('jenis', 'Setoran')->sum('realisasi');
                 })
-                ->money('IDR', locale: 'id')
+                ->formatStateUsing(fn ($state) => Rupiah::format((float) $state))
                 ->color('success')
                 ->weight('bold'),
 
@@ -52,10 +53,7 @@ class RealisasiEkuInfolist
                     $data = collect($record->hitungDeviasi());
                     return $data->where('jenis', 'Setoran')->sum('deviasi');
                 })
-                ->formatStateUsing(function ($state) {
-                    $prefix = $state < 0 ? '(Mines) Rp ' : 'Rp ';
-                    return $prefix . number_format(abs($state), 0, ',', '.');
-                })
+                ->formatStateUsing(fn ($state) => Rupiah::formatMines((float) $state))
                 ->color(fn ($state) => $state < 0 ? 'danger' : 'warning'),
 
             // --- BAGIAN PENARIKAN ---
@@ -65,7 +63,7 @@ class RealisasiEkuInfolist
                     $data = collect($record->hitungDeviasi());
                     return $data->where('jenis', 'Penarikan')->sum('realisasi');
                 })
-                ->money('IDR', locale: 'id')
+                ->formatStateUsing(fn ($state) => Rupiah::format((float) $state))
                 ->color('success')
                 ->weight('bold'),
 
@@ -75,10 +73,7 @@ class RealisasiEkuInfolist
                     $data = collect($record->hitungDeviasi());
                     return $data->where('jenis', 'Penarikan')->sum('deviasi');
                 })
-                ->formatStateUsing(function ($state) {
-                    $prefix = $state < 0 ? '(Mines) Rp ' : 'Rp ';
-                    return $prefix . number_format(abs($state), 0, ',', '.');
-                })
+                ->formatStateUsing(fn ($state) => Rupiah::formatMines((float) $state))
                 ->color(fn ($state) => $state < 0 ? 'danger' : 'warning'),
 
         ])

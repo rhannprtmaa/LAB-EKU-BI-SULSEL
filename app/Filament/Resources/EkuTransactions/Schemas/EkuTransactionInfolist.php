@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\EkuTransactions\Schemas;
 
 use App\Models\EkuTransaction;
+use App\Support\Rupiah;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -120,10 +121,10 @@ class EkuTransactionInfolist
                     ->schema([
                         TextEntry::make('total_setoran')
                             ->label('Pengajuan Setoran')
-                            ->money('IDR'),
+                            ->formatStateUsing(fn ($state) => Rupiah::format((float) $state)),
                         TextEntry::make('total_penarikan')
                             ->label('Pengajuan Penarikan')
-                            ->money('IDR'),
+                            ->formatStateUsing(fn ($state) => Rupiah::format((float) $state)),
                     ]),
             ]);
     }

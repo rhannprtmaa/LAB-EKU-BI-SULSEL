@@ -5,6 +5,7 @@ namespace App\Filament\Resources\RealisasiEkus\RelationManagers;
 use App\Models\EkuTransactionRealisasiDetail;
 use App\Services\EkuReportCalculator;
 use App\Support\CurrentUser;
+use App\Support\Rupiah;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -132,7 +133,7 @@ class HistoryRelationManager extends RelationManager
             ->values()
             ->all();
 
-        $rupiah = fn (float $v) => 'Rp ' . number_format($v, 0, ',', '.');
+        $rupiah = fn (float $v) => Rupiah::format($v);
 
         $pdf = Pdf::loadView('pdf.realisasi-detail', [
             'bankName' => $transaksi?->bank?->name ?? '-',

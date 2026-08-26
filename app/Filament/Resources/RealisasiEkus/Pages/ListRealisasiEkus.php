@@ -23,17 +23,25 @@ class ListRealisasiEkus extends ListRecords
 
     protected function getHeaderActions(): array
     {
+        // Input Realisasi Massal murni tugas Bank Indonesia (BI yang menginput
+        // realisasi setoran/penarikan atas nama bank). User perbankan hanya
+        // melihat hasilnya di tabel, jadi kedua aksi ini disembunyikan untuk
+        // role user_perbankan.
+        $bukanUserPerbankan = fn () => ! CurrentUser::get()?->isUserPerbankan();
+
         return [
             Actions\Action::make('download_template')
                 ->label('Download Template')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
+                ->visible($bukanUserPerbankan)
                 ->action(fn () => Excel::download(new RealisasiTemplateExport(), 'template-realisasi-harian.xlsx')),
 
             Actions\Action::make('upload_realisasi')
                 ->label('Upload Realisasi Massal')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('primary')
+                ->visible($bukanUserPerbankan)
                 ->modalHeading('Upload Data Realisasi')
                 ->modalDescription('Pilih periode dan unggah file excel yang telah diisi.')
                 ->form([
@@ -73,6 +81,16 @@ class ListRealisasiEkus extends ListRecords
                         ->required(),
                 ])
                 ->action(function (array $data): void {
+                    if (CurrentUser::get()?->isUserPerbankan()) {
+                        Notification::make()
+                            ->title('Tidak Diizinkan')
+                            ->body('Input realisasi massal hanya dapat dilakukan oleh Bank Indonesia.')
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
+
                     $filePath = Storage::disk('public')->path($data['file']);
 
                     try {

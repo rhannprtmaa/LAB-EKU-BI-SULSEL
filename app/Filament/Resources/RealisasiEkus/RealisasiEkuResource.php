@@ -8,6 +8,7 @@ use App\Filament\Resources\RealisasiEkus\RelationManagers\HistoryRelationManager
 use App\Filament\Resources\RealisasiEkus\Schemas\RealisasiEkuInfolist;
 use App\Models\EkuTransaction;
 use App\Support\CurrentUser;
+use App\Support\Rupiah;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -81,7 +82,7 @@ class RealisasiEkuResource extends Resource
 
                 TextColumn::make('total_setoran')
                     ->label('Forecast Setoran')
-                    ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.'),
+                    ->formatStateUsing(fn ($state) => Rupiah::format((float) $state)),
 
                 TextColumn::make('realisasi_history_sum_total_setoran')
                     ->label('Realisasi Setoran (Total)')
@@ -89,7 +90,7 @@ class RealisasiEkuResource extends Resource
                     ->formatStateUsing(function (\App\Models\EkuTransaction $record, $state) {
                         $forecast = (float) $record->total_setoran;
                         $realisasi = (float) ($state ?? 0);
-                        $nominal = 'Rp ' . number_format($realisasi, 0, ',', '.');
+                        $nominal = Rupiah::format($realisasi);
 
                         if ($realisasi == 0) {
                             $badge = '<span class="ml-3 px-3 py-0.3 rounded-md text-[10px] font-bold bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">Belum Ada</span>';
@@ -106,7 +107,7 @@ class RealisasiEkuResource extends Resource
 
                 TextColumn::make('total_penarikan')
                     ->label('Forecast Penarikan')
-                    ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.'),
+                    ->formatStateUsing(fn ($state) => Rupiah::format((float) $state)),
 
                 TextColumn::make('realisasi_history_sum_total_penarikan')
                     ->label('Realisasi Penarikan (Total)')
@@ -114,7 +115,7 @@ class RealisasiEkuResource extends Resource
                     ->formatStateUsing(function (\App\Models\EkuTransaction $record, $state) {
                         $forecast = (float) $record->total_penarikan;
                         $realisasi = (float) ($state ?? 0);
-                        $nominal = 'Rp ' . number_format($realisasi, 0, ',', '.');
+                        $nominal = Rupiah::format($realisasi);
 
                         if ($realisasi == 0) {
                             $badge = '<span class="ml-2 px-2 py-0.5 rounded-md text-[11px] font-bold bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">Belum Ada</span>';

@@ -26,7 +26,7 @@
         </div>
 
         <p class="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-            Rp {{ number_format($bank->batasan_setoran ?? 0, 0, ',', '.') }}
+            {{ \App\Support\Rupiah::format($bank->batasan_setoran ?? 0) }}
         </p>
     </div>
 
@@ -46,7 +46,7 @@
         </div>
 
         <p class="text-3xl font-bold text-blue-600 dark:text-blue-400">
-            Rp {{ number_format($bank->batasan_penarikan ?? 0, 0, ',', '.') }}
+            {{ \App\Support\Rupiah::format($bank->batasan_penarikan ?? 0) }}
         </p>
     </div>
 
@@ -198,34 +198,34 @@
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     <div>
                         <p class="text-xs text-gray-500">Total Setoran</p>
-                        <p class="text-lg font-bold" style="color:#054177;">Rp {{ number_format($ringkasan['totalSetoran'], 0, ',', '.') }}</p>
+                        <p class="text-lg font-bold" style="color:#054177;">{{ \App\Support\Rupiah::format($ringkasan['totalSetoran']) }}</p>
                     </div>
                     <div>
                         <p class="text-xs text-gray-500">Total Penarikan</p>
-                        <p class="text-lg font-bold" style="color:#054177;">Rp {{ number_format($ringkasan['totalPenarikan'], 0, ',', '.') }}</p>
+                        <p class="text-lg font-bold" style="color:#054177;">{{ \App\Support\Rupiah::format($ringkasan['totalPenarikan']) }}</p>
                     </div>
                     <div>
                         <p class="text-xs text-gray-500">Grand Total (Setoran + Penarikan)</p>
-                        <p class="text-lg font-bold text-emerald-600">Rp {{ number_format($ringkasan['grandTotal'], 0, ',', '.') }}</p>
+                        <p class="text-lg font-bold text-emerald-600">{{ \App\Support\Rupiah::format($ringkasan['grandTotal']) }}</p>
                     </div>
 
                     <div>
                         <p class="text-xs text-gray-500">Total UK (Uang Kertas)</p>
-                        <p class="text-lg font-bold text-gray-700 dark:text-gray-200">Rp {{ number_format($ringkasan['totalUK'], 0, ',', '.') }}</p>
+                        <p class="text-lg font-bold text-gray-700 dark:text-gray-200">{{ \App\Support\Rupiah::format($ringkasan['totalUK']) }}</p>
                     </div>
                     <div>
                         <p class="text-xs text-gray-500">Total UL (Uang Logam)</p>
-                        <p class="text-lg font-bold text-gray-700 dark:text-gray-200">Rp {{ number_format($ringkasan['totalUL'], 0, ',', '.') }}</p>
+                        <p class="text-lg font-bold text-gray-700 dark:text-gray-200">{{ \App\Support\Rupiah::format($ringkasan['totalUL']) }}</p>
                     </div>
                     <div></div>
 
                     <div>
                         <p class="text-xs text-gray-500">Total UPB <span class="text-gray-400">(100rb + 50rb)</span></p>
-                        <p class="text-lg font-bold text-amber-600">Rp {{ number_format($ringkasan['totalUPB'], 0, ',', '.') }}</p>
+                        <p class="text-lg font-bold text-amber-600">{{ \App\Support\Rupiah::format($ringkasan['totalUPB']) }}</p>
                     </div>
                     <div>
                         <p class="text-xs text-gray-500">Total UPK <span class="text-gray-400">(20rb ke bawah + logam)</span></p>
-                        <p class="text-lg font-bold text-amber-600">Rp {{ number_format($ringkasan['totalUPK'], 0, ',', '.') }}</p>
+                        <p class="text-lg font-bold text-amber-600">{{ \App\Support\Rupiah::format($ringkasan['totalUPK']) }}</p>
                     </div>
                 </div>
             </div>

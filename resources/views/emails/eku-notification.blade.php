@@ -110,6 +110,16 @@
             margin-bottom: 20px;
         }
 
+        /* Penanda urgensi/status - supaya Disetujui, Ditolak, dan Perhatian
+           terlihat beda sekilas saat dibuka di Gmail, bukan cuma dari teks. */
+        .badge-success { background-color: #ECFDF5; border-color: #A7E8C8; color: #047857; }
+        .badge-danger  { background-color: #FEF2F2; border-color: #F3B4B4; color: #B42318; }
+        .badge-warning { background-color: #FFFBEB; border-color: #F3D399; color: #92400E; }
+
+        .info-box.tone-success { border-left-color: #047857; }
+        .info-box.tone-danger  { border-left-color: #B42318; }
+        .info-box.tone-warning { border-left-color: #92400E; }
+
         .title {
             margin: 0 0 22px;
             font-family: Georgia, 'Times New Roman', serif;
@@ -262,6 +272,15 @@
 
 <body>
 
+{{-- Preheader tersembunyi: ini yang muncul sebagai teks preview di sebelah
+     subject saat email masuk ke Gmail. Tanpa ini, Gmail menampilkan teks
+     acak dari bagian atas body. Padding di akhir memastikan Gmail tidak
+     ikut menampilkan sisa teks lain sebagai preview. --}}
+<div style="display:none;font-size:1px;color:#EFEBE2;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+    {{ $pesan }}
+    &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+</div>
+
 <table role="presentation" width="100%">
     <tr>
         <td>
@@ -277,7 +296,7 @@
 
                     {{-- HEADER / LETTERHEAD --}}
                     <tr>
-                        <td class="header">
+                        <td class="header" bgcolor="#0F2A4A">
                             <table role="presentation" width="100%">
                                 <tr>
                                     {{--
@@ -311,8 +330,17 @@
                     <tr>
                         <td class="content">
 
-                            <div class="badge">
-                                NOTIFIKASI SISTEM
+                            @php
+                                $tone = match($warna ?? null) {
+                                    'success' => ['class' => 'badge-success', 'label' => 'BERHASIL'],
+                                    'danger'  => ['class' => 'badge-danger',  'label' => 'PERLU TINDAKAN'],
+                                    'warning' => ['class' => 'badge-warning', 'label' => 'PERHATIAN'],
+                                    default   => ['class' => '', 'label' => 'NOTIFIKASI SISTEM'],
+                                };
+                            @endphp
+
+                            <div class="badge {{ $tone['class'] }}">
+                                {{ $tone['label'] }}
                             </div>
 
                             <h1 class="title">
@@ -331,7 +359,7 @@
                                 <table
                                     role="presentation"
                                     width="100%"
-                                    class="info-box"
+                                    class="info-box {{ str_replace('badge-', 'tone-', $tone['class']) }}"
                                 >
                                     <tr class="info-row last">
                                         <td class="info-label">Bank</td>
@@ -358,7 +386,7 @@
 
                     {{-- FOOTER --}}
                     <tr>
-                        <td class="footer">
+                        <td class="footer" bgcolor="#0F2A4A">
                             <div class="footer-seal">• BI •</div>
                             <div class="footer-title">Sistem LAB EKU BI Sulsel</div>
                             <div class="footer-text">Bank Indonesia — Provinsi Sulawesi Selatan</div>

@@ -95,6 +95,7 @@ class AppNotification extends BaseNotification implements ShouldQueue
                 'emailAction' => $this->emailAction ?? 'Lihat Detail',
                 'namaPenerima' => $notifiable->name ?? 'Pengguna',
                 'bank' => $notifiable->bank?->name ?? null,
+                'warna' => $this->warna,
             ]);
     }
 }

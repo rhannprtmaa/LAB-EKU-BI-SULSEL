@@ -6,6 +6,7 @@ use App\Exports\ReportEkuExport;
 use App\Models\EkuTransaction;
 use App\Services\EkuReportCalculator;
 use App\Support\CurrentUser;
+use App\Support\Rupiah;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -96,7 +97,7 @@ class ReportEku extends Page implements HasTable
                     ->getStateUsing(fn (EkuTransaction $record) => $this->laporanUntuk($record)['deviasiSetoran'] ?? 0)
                     ->formatStateUsing(function ($state) {
                         $val = (float) $state;
-                        $nominal = 'Rp ' . number_format(abs($val), 0, ',', '.');
+                        $nominal = Rupiah::format(abs($val));
 
                         if ($val < 0) {
                             $badge = '<span class="ml-2 px-2 py-0.5 rounded-md text-[11px] font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400">Over</span>';
@@ -118,7 +119,7 @@ class ReportEku extends Page implements HasTable
                     ->getStateUsing(fn (EkuTransaction $record) => $this->laporanUntuk($record)['deviasiPenarikan'] ?? 0)
                     ->formatStateUsing(function ($state) {
                         $val = (float) $state;
-                        $nominal = 'Rp ' . number_format(abs($val), 0, ',', '.');
+                        $nominal = Rupiah::format(abs($val));
 
                         if ($val < 0) {
                             $badge = '<span class="ml-2 px-2 py-0.5 rounded-md text-[11px] font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400">Over</span>';
@@ -220,9 +221,7 @@ class ReportEku extends Page implements HasTable
 
     protected function rupiah(float $value): string
     {
-        $prefix = $value < 0 ? '-Rp ' : 'Rp ';
-
-        return $prefix . number_format(abs($value), 0, ',', '.');
+        return Rupiah::format($value);
     }
 
     protected function getFilteredRowsForExport(): Collection

@@ -7,6 +7,7 @@ use App\Models\EkuTransaction;
 use App\Models\EkuTransactionDetail;
 use App\Models\User;
 use App\Support\CurrentUser;
+use App\Support\Rupiah;
 use App\Services\EkuReportCalculator; // <-- Ditambahkan agar kalkulasinya sama dengan Reporting
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -435,15 +436,17 @@ class Dashboard extends BaseDashboard implements HasForms
 
     protected function formatRupiahPenuh(float $value): string
     {
-        return 'Rp ' . number_format($value, 0, ',', '.');
+        return Rupiah::format($value);
     }
 
     protected function formatRupiahSingkat(float $value): string
     {
-        if ($value >= 1_000_000_000_000) return 'Rp ' . number_format($value / 1_000_000_000_000, 1) . ' T';
-        if ($value >= 1_000_000_000) return 'Rp ' . number_format($value / 1_000_000_000, 1) . ' M';
-        if ($value >= 1_000_000) return 'Rp ' . number_format($value / 1_000_000, 1) . ' Jt';
-        return 'Rp ' . number_format($value, 0);
+        // Format singkat (dibulatkan) untuk tampilan ringkas kartu dashboard,
+        // tetap tanpa spasi setelah "Rp" agar konsisten dengan format nominal penuh.
+        if ($value >= 1_000_000_000_000) return 'Rp' . number_format($value / 1_000_000_000_000, 1) . ' T';
+        if ($value >= 1_000_000_000) return 'Rp' . number_format($value / 1_000_000_000, 1) . ' M';
+        if ($value >= 1_000_000) return 'Rp' . number_format($value / 1_000_000, 1) . ' Jt';
+        return 'Rp' . number_format($value, 0);
     }
 
     public function availablePeriods(): array
