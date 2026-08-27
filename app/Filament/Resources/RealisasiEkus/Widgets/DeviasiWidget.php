@@ -13,8 +13,24 @@ class DeviasiWidget extends Widget
 
     public ?EkuTransaction $record = null;
 
+    public string $jenisFilter = 'Semua';
+
+    public function setJenisFilter(string $jenis): void
+    {
+        $this->jenisFilter = $jenis;
+    }
+
     public function getDeviasi(): array
     {
-        return $this->record?->hitungDeviasi() ?? [];
+        $deviasi = $this->record?->hitungDeviasi() ?? [];
+
+        if ($this->jenisFilter === 'Semua') {
+            return $deviasi;
+        }
+
+        return collect($deviasi)
+            ->where('jenis', $this->jenisFilter)
+            ->values()
+            ->all();
     }
 }

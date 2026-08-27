@@ -164,7 +164,7 @@
         <tr>
             <td class="label">Bank</td>
             <td class="nilai">{{ $bankName }}</td>
-            <td class="label">Tanggal Input</td>
+            <td class="label">Tanggal Update</td>
             <td class="nilai">{{ $tanggalInput }}</td>
         </tr>
         <tr>

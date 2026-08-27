@@ -37,8 +37,17 @@ class EkuReportCalculator
             ->pluck('bulan')
             ->unique();
 
-        $realisasiSetoran = (float) $realisasiDetails->where('jenis_file', 'Setoran')->sum('subtotal');
-        $realisasiPenarikan = (float) $realisasiDetails->where('jenis_file', 'Penarikan')->sum('subtotal');
+        $realisasiSetoranDetails = $realisasiDetails->where('jenis_file', 'Setoran');
+        $realisasiPenarikanDetails = $realisasiDetails->where('jenis_file', 'Penarikan');
+
+        $realisasiSetoran = (float) $realisasiSetoranDetails->sum('subtotal');
+        $realisasiPenarikan = (float) $realisasiPenarikanDetails->sum('subtotal');
+
+        // Breakdown UPB/UPK realisasi -- dipakai untuk sub-kolom di PDF Report EKU
+        $realisasiSetoranUpb = self::sumPecahan($realisasiSetoranDetails, self::KOLOM_UPB);
+        $realisasiSetoranUpk = self::sumPecahan($realisasiSetoranDetails, self::KOLOM_UPK);
+        $realisasiPenarikanUpb = self::sumPecahan($realisasiPenarikanDetails, self::KOLOM_UPB);
+        $realisasiPenarikanUpk = self::sumPecahan($realisasiPenarikanDetails, self::KOLOM_UPK);
 
         $detailSetoran = $record->details->where('jenis_file', 'Setoran');
         $detailPenarikan = $record->details->where('jenis_file', 'Penarikan');
@@ -68,6 +77,18 @@ class EkuReportCalculator
             'realisasiPenarikan' => $realisasiPenarikan,
             'deviasiSetoran' => $setoranTotal - $realisasiSetoran,
             'deviasiPenarikan' => $penarikanTotal - $realisasiPenarikan,
+
+            // Breakdown UPB/UPK realisasi (untuk sub-kolom PDF Report EKU)
+            'realisasiSetoranUpb' => $realisasiSetoranUpb,
+            'realisasiSetoranUpk' => $realisasiSetoranUpk,
+            'realisasiPenarikanUpb' => $realisasiPenarikanUpb,
+            'realisasiPenarikanUpk' => $realisasiPenarikanUpk,
+
+            // Breakdown UPB/UPK deviasi = proyeksi UPB/UPK dikurangi realisasi UPB/UPK
+            'deviasiSetoranUpb' => $setoranUpb - $realisasiSetoranUpb,
+            'deviasiSetoranUpk' => $setoranUpk - $realisasiSetoranUpk,
+            'deviasiPenarikanUpb' => $penarikanUpb - $realisasiPenarikanUpb,
+            'deviasiPenarikanUpk' => $penarikanUpk - $realisasiPenarikanUpk,
 
             'setoranUpb' => $setoranUpb,
             'setoranUpk' => $setoranUpk,

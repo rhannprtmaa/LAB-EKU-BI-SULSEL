@@ -33,7 +33,7 @@ class HistoryRelationManager extends RelationManager
             ->defaultSort('input_at', 'desc')
             ->columns([
                 TextColumn::make('input_at')
-                    ->label('Tanggal Input')
+                    ->label('Tanggal Update')
                     ->dateTime('d M Y H:i')
                     ->sortable(),
 
