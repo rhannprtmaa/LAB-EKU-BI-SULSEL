@@ -57,7 +57,10 @@ class ManagementEku extends Page implements HasForms, HasTable
         $this->form->fill();
     }
 
-    // --- KONFIGURASI TABEL BATASAN BANK ---
+    // ============================================================
+    // KONFIGURASI TABEL BATASAN BANK
+    // ============================================================
+
     public function table(Table $table): Table
     {
         return $table
@@ -83,79 +86,139 @@ class ManagementEku extends Page implements HasForms, HasTable
                     ->numeric(0, ',', '.')
                     ->placeholder('Tanpa batasan'),
 
-                // KOLOM UPLOAD FILE BATASAN SETORAN
+                // ====================================================
+                // FILE BATASAN SETORAN
+                // ====================================================
+
                 TextColumn::make('file_batasan_setoran')
                     ->label('File Batasan Setoran')
-                    ->getStateUsing(fn ($record) => $record->file_batasan_setoran ? 'Ubah File' : 'Upload Excel')
+                    ->getStateUsing(
+                        fn ($record) =>
+                        $record->file_batasan_setoran
+                            ? 'Ubah File'
+                            : 'Upload Excel'
+                    )
                     ->badge()
-                    ->color(fn ($record) => $record->file_batasan_setoran ? 'success' : 'danger')
+                    ->color(
+                        fn ($record) =>
+                        $record->file_batasan_setoran
+                            ? 'success'
+                            : 'danger'
+                    )
                     ->icon('heroicon-o-arrow-up-tray')
                     ->action(
                         Action::make('upload_setoran')
-                            ->modalHeading(fn (Bank $record) => 'Upload File Batasan Setoran - ' . $record->name)
-                            ->modalDescription('Unggah file Excel format EKU. File ini akan digunakan sebagai rujukan saat tombol "Sesuaikan Batasan" ditekan.')
+                            ->modalHeading(
+                                fn (Bank $record) =>
+                                'Upload File Batasan Setoran - ' . $record->name
+                            )
+                            ->modalDescription(
+                                'Unggah file Excel format EKU. File ini hanya akan menjadi rujukan batasan. Penyesuaian hanya dilakukan ketika User BI menekan tombol "Sesuaikan Batasan".'
+                            )
                             ->form([
                                 FileUpload::make('file_batasan_setoran')
                                     ->label('Pilih File Excel')
                                     ->disk('public')
                                     ->directory('batasan-bank/setoran')
-                                    ->getUploadedFileNameForStorageUsing(UploadedFileNaming::bersih())
+                                    ->getUploadedFileNameForStorageUsing(
+                                        UploadedFileNaming::bersih()
+                                    )
                                     ->acceptedFileTypes([
                                         'application/vnd.ms-excel',
                                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                                     ])
                                     ->maxSize(5120)
-                                    ->default(fn (Bank $record) => $record->file_batasan_setoran)
+                                    ->default(
+                                        fn (Bank $record) =>
+                                        $record->file_batasan_setoran
+                                    ),
                             ])
                             ->action(function (Bank $record, array $data) {
                                 $path = $data['file_batasan_setoran'];
 
-                                // Sebelumnya cuma path file yang disimpan, totalnya
-                                // (batasan_setoran) tidak pernah dihitung ulang --
-                                // makanya nilainya tetap 0 di mana pun ditampilkan.
-                                // Sekarang parsing-nya memakai logic yang SAMA PERSIS
-                                // dengan pembacaan file pengajuan EKU (forecast).
                                 $record->update([
                                     'file_batasan_setoran' => $path,
                                     'file_batasan_setoran_nama_asli' => basename($path),
                                     'batasan_setoran' => EkuExcelParser::totalDariFile($path),
                                 ]);
 
-                                // Kalau ada pengajuan EKU bank ini yang sudah melebihi
-                                // batasan baru, langsung disesuaikan otomatis.
-                                $record->ekuTransactions()->get()->each(
-                                    fn ($transaksi) => $transaksi->terapkanBatasanBank()
+                                /*
+                                 * PENTING:
+                                 *
+                                 * Jangan panggil:
+                                 *
+                                 * $record->ekuTransactions()->get()->each(...)
+                                 *
+                                 * di sini.
+                                 *
+                                 * Perubahan batasan TIDAK BOLEH otomatis
+                                 * mengubah nilai proyeksi.
+                                 *
+                                 * Penyesuaian baru dilakukan ketika User BI
+                                 * menekan tombol "Sesuaikan Batasan".
+                                 */
+
+                                NotifikasiService::batasanEkuDiubah(
+                                    $record,
+                                    'Batasan Setoran diperbarui via file Excel. Penyesuaian pengajuan dilakukan secara manual oleh User BI melalui tombol "Sesuaikan Batasan".'
                                 );
 
-                                NotifikasiService::batasanEkuDiubah($record, 'Batasan Setoran diperbarui via file Excel.');
-
-                                Notification::make()->title('File Batasan Setoran berhasil diunggah dan totalnya dihitung ulang!')->success()->send();
+                                Notification::make()
+                                    ->title('File Batasan Setoran berhasil diunggah')
+                                    ->body(
+                                        'Nilai batasan telah diperbarui. Pengajuan EKU sudah bisa di batasi'
+                                    )
+                                    ->success()
+                                    ->send();
                             })
                     ),
 
-                // KOLOM UPLOAD FILE BATASAN PENARIKAN
+                // ====================================================
+                // FILE BATASAN PENARIKAN
+                // ====================================================
+
                 TextColumn::make('file_batasan_penarikan')
                     ->label('File Batasan Penarikan')
-                    ->getStateUsing(fn ($record) => $record->file_batasan_penarikan ? 'Ubah File' : 'Upload Excel')
+                    ->getStateUsing(
+                        fn ($record) =>
+                        $record->file_batasan_penarikan
+                            ? 'Ubah File'
+                            : 'Upload Excel'
+                    )
                     ->badge()
-                    ->color(fn ($record) => $record->file_batasan_penarikan ? 'success' : 'danger')
+                    ->color(
+                        fn ($record) =>
+                        $record->file_batasan_penarikan
+                            ? 'success'
+                            : 'danger'
+                    )
                     ->icon('heroicon-o-arrow-up-tray')
                     ->action(
                         Action::make('upload_penarikan')
-                            ->modalHeading(fn (Bank $record) => 'Upload File Batasan Penarikan - ' . $record->name)
-                            ->modalDescription('Unggah file Excel format EKU. File ini akan digunakan sebagai rujukan saat tombol "Sesuaikan Batasan" ditekan.')
+                            ->modalHeading(
+                                fn (Bank $record) =>
+                                'Upload File Batasan Penarikan - ' . $record->name
+                            )
+                            ->modalDescription(
+                                'Unggah file Excel format EKU. File ini hanya akan menjadi rujukan batasan. Penyesuaian hanya dilakukan ketika User BI menekan tombol "Sesuaikan Batasan".'
+                            )
                             ->form([
                                 FileUpload::make('file_batasan_penarikan')
                                     ->label('Pilih File Excel')
                                     ->disk('public')
                                     ->directory('batasan-bank/penarikan')
-                                    ->getUploadedFileNameForStorageUsing(UploadedFileNaming::bersih())
+                                    ->getUploadedFileNameForStorageUsing(
+                                        UploadedFileNaming::bersih()
+                                    )
                                     ->acceptedFileTypes([
                                         'application/vnd.ms-excel',
                                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                                     ])
                                     ->maxSize(5120)
-                                    ->default(fn (Bank $record) => $record->file_batasan_penarikan)
+                                    ->default(
+                                        fn (Bank $record) =>
+                                        $record->file_batasan_penarikan
+                                    ),
                             ])
                             ->action(function (Bank $record, array $data) {
                                 $path = $data['file_batasan_penarikan'];
@@ -166,24 +229,48 @@ class ManagementEku extends Page implements HasForms, HasTable
                                     'batasan_penarikan' => EkuExcelParser::totalDariFile($path),
                                 ]);
 
-                                $record->ekuTransactions()->get()->each(
-                                    fn ($transaksi) => $transaksi->terapkanBatasanBank()
+                                /*
+                                 * PENTING:
+                                 *
+                                 * Tidak ada pemanggilan
+                                 * terapkanBatasanBank() di sini.
+                                 */
+
+                                NotifikasiService::batasanEkuDiubah(
+                                    $record,
+                                    'Batasan Penarikan diperbarui via file Excel. Penyesuaian pengajuan dilakukan secara manual oleh User BI melalui tombol "Sesuaikan Batasan".'
                                 );
 
-                                NotifikasiService::batasanEkuDiubah($record, 'Batasan Penarikan diperbarui via file Excel.');
-
-                                Notification::make()->title('File Batasan Penarikan berhasil diunggah dan totalnya dihitung ulang!')->success()->send();
+                                Notification::make()
+                                    ->title('File Batasan Penarikan berhasil diunggah')
+                                    ->body(
+                                        'Nilai batasan telah diperbarui. Pengajuan EKU tidak dipotong otomatis.'
+                                    )
+                                    ->success()
+                                    ->send();
                             })
                     ),
             ])
+
+            // ========================================================
+            // ACTIONS
+            // ========================================================
+
             ->actions([
                 Action::make('detail')
-                ->label('Detail')
-                ->icon('heroicon-o-eye')
-                ->color('gray')
-                ->url(fn (Bank $record): string => ViewBatasanBank::getUrl([
-                    'record' => $record->id
-                ])),
+                    ->label('Detail')
+                    ->icon('heroicon-o-eye')
+                    ->color('gray')
+                    ->url(
+                        fn (Bank $record): string =>
+                        ViewBatasanBank::getUrl([
+                            'record' => $record->id,
+                        ])
+                    ),
+
+                // ====================================================
+                // EDIT BATASAN MANUAL
+                // ====================================================
 
                 EditAction::make()
                     ->label('Edit')
@@ -200,12 +287,25 @@ class ManagementEku extends Page implements HasForms, HasTable
                             ->placeholder('Kosongkan jika tanpa batasan'),
                     ])
                     ->after(function (Bank $record) {
-                        $record->ekuTransactions()->get()->each(
-                            fn ($transaksi) => $transaksi->terapkanBatasanBank()
-                        );
 
-                        NotifikasiService::batasanEkuDiubah($record, 'Nominal batasan diperbarui secara manual.');
+                        /*
+                         * PENTING:
+                         *
+                         * Jangan menyesuaikan transaksi di sini.
+                         *
+                         * Admin hanya mengubah konfigurasi batasan.
+                         * User BI yang menentukan kapan batasan diterapkan.
+                         */
+
+                        NotifikasiService::batasanEkuDiubah(
+                            $record,
+                            'Nominal batasan diperbarui secara manual. Penyesuaian pengajuan dilakukan oleh User BI melalui tombol "Sesuaikan Batasan".'
+                        );
                     }),
+
+                // ====================================================
+                // DELETE BATASAN
+                // ====================================================
 
                 Action::make('delete_batasan')
                     ->label('Delete')
@@ -213,21 +313,41 @@ class ManagementEku extends Page implements HasForms, HasTable
                     ->color('danger')
                     ->requiresConfirmation()
                     ->modalHeading('Hapus Batasan Bank')
-                    ->modalDescription('Apakah Anda yakin ingin menghapus semua nilai nominal dan file batasan untuk bank ini? (Data Bank tidak akan terhapus)')
+                    ->modalDescription(
+                        'Apakah Anda yakin ingin menghapus semua nilai nominal dan file batasan untuk bank ini? Data Bank tidak akan terhapus.'
+                    )
                     ->action(function (Bank $record) {
+
                         $record->update([
                             'batasan_setoran' => null,
                             'batasan_penarikan' => null,
                             'file_batasan_setoran' => null,
+                            'file_batasan_setoran_nama_asli' => null,
                             'file_batasan_penarikan' => null,
+                            'file_batasan_penarikan_nama_asli' => null,
                         ]);
 
-                        NotifikasiService::batasanEkuDiubah($record, 'Semua batasan EKU telah dihapus.');
+                        /*
+                         * Tidak melakukan penyesuaian terhadap
+                         * transaksi yang sudah ada.
+                         */
 
-                        Notification::make()->title('Batasan berhasil dihapus!')->success()->send();
+                        NotifikasiService::batasanEkuDiubah(
+                            $record,
+                            'Semua batasan EKU telah dihapus.'
+                        );
+
+                        Notification::make()
+                            ->title('Batasan berhasil dihapus!')
+                            ->success()
+                            ->send();
                     }),
             ]);
     }
+
+    // ================================================================
+    // FORM TEMPLATE EKU
+    // ================================================================
 
     public function form(Schema $schema): Schema
     {
@@ -239,7 +359,9 @@ class ManagementEku extends Page implements HasForms, HasTable
                             ->label('File Template Setoran (Excel)')
                             ->disk('public')
                             ->directory('template-eku')
-                            ->getUploadedFileNameForStorageUsing(UploadedFileNaming::bersih())
+                            ->getUploadedFileNameForStorageUsing(
+                                UploadedFileNaming::bersih()
+                            )
                             ->acceptedFileTypes([
                                 'application/vnd.ms-excel',
                                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -253,7 +375,9 @@ class ManagementEku extends Page implements HasForms, HasTable
                             ->label('File Template Penarikan (Excel)')
                             ->disk('public')
                             ->directory('template-eku')
-                            ->getUploadedFileNameForStorageUsing(UploadedFileNaming::bersih())
+                            ->getUploadedFileNameForStorageUsing(
+                                UploadedFileNaming::bersih()
+                            )
                             ->acceptedFileTypes([
                                 'application/vnd.ms-excel',
                                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -264,16 +388,10 @@ class ManagementEku extends Page implements HasForms, HasTable
             ->statePath('data');
     }
 
-    /**
-     * PERBAIKAN: sebelumnya method ini SELALU membuat baris baru
-     * (EkuDeadline::create), jadi kalau Admin BI edit ulang deadline
-     * berkali-kali, tabelnya menumpuk banyak baris -- dan pengecekan di
-     * form pengajuan bank ternyata mengambil baris PALING PERTAMA/lama
-     * (bukan yang terbaru), jadi perubahan deadline tidak pernah kepakai.
-     *
-     * Sekarang deadline HANYA SATU baris untuk seluruh aplikasi: kalau
-     * sudah ada, di-update di tempat; kalau belum ada, baru dibuatkan.
-     */
+    // ================================================================
+    // DEADLINE
+    // ================================================================
+
     public function simpanDeadline(): void
     {
         $this->validate([
@@ -315,6 +433,10 @@ class ManagementEku extends Page implements HasForms, HasTable
             ->success()
             ->send();
     }
+
+    // ================================================================
+    // TEMPLATE
+    // ================================================================
 
     public function save(): void
     {

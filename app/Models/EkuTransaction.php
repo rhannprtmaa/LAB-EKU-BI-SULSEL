@@ -213,71 +213,308 @@ class EkuTransaction extends Model
     }
 
     public function terapkanBatasanBank(): bool
-    {
-        $bank = $this->bank;
+{
+    $bank = $this->bank;
 
-        if (! $bank) {
-            return false;
-        }
-
-        $disesuaikan = false;
-        $ringkasan = [];
-
-        foreach (['Setoran' => 'batasan_setoran', 'Penarikan' => 'batasan_penarikan'] as $jenisFile => $kolomBatasan) {
-            $batasan = (float) ($bank->{$kolomBatasan} ?? 0);
-
-            if ($batasan <= 0) {
-                continue;
-            }
-
-            $totalSaatIni = (float) $this->details()
-                ->where('jenis_file', $jenisFile)
-                ->sum('subtotal');
-
-            if ($totalSaatIni <= $batasan) {
-                continue;
-            }
-
-            $faktor = $batasan / $totalSaatIni;
-
-            $kolomPecahan = [
-                'kertas_100k', 'kertas_50k', 'kertas_20k', 'kertas_10k', 'kertas_5k',
-                'kertas_2k', 'kertas_1k', 'logam_1k', 'logam_500', 'logam_200', 'logam_100',
-            ];
-
-            $this->details()->where('jenis_file', $jenisFile)->get()->each(function ($detail) use ($kolomPecahan, $faktor) {
-                foreach ($kolomPecahan as $kolom) {
-                    $detail->{$kolom} = round($detail->{$kolom} * $faktor, 2);
-                }
-
-                $detail->recalculateSubtotal();
-            });
-
-            $ringkasan[] = "{$jenisFile}: " . number_format($totalSaatIni, 0, ',', '.')
-                . ' -> ' . number_format($batasan, 0, ',', '.');
-
-            $disesuaikan = true;
-        }
-
-        if ($disesuaikan) {
-            static::recalculateTotals($this->id);
-            $this->refresh();
-
-            foreach (['Setoran', 'Penarikan'] as $jenisFile) {
-                $this->syncExcelValuesToFile($jenisFile);
-            }
-
-            Notification::make()
-                ->title('Pengajuan EKU otomatis disesuaikan dengan Batasan EKU')
-                ->body(($bank->name ?? 'Bank') . ' -- ' . implode(' | ', $ringkasan))
-                ->warning()
-                ->persistent()
-                ->send();
-        }
-
-        return $disesuaikan;
+    if (! $bank) {
+        return false;
     }
 
+    /*
+     * Penyesuaian hanya boleh dilakukan untuk pengajuan
+     * yang belum disetujui.
+     *
+     * Tombol "Sesuaikan Batasan" memang hanya muncul
+     * sebelum status Disetujui, tetapi pengecekan ini
+     * tetap dilakukan di level model sebagai pengaman.
+     */
+    if ($this->status === self::STATUS_DISETUJUI) {
+        return false;
+    }
+
+    $disesuaikan = false;
+    $ringkasan = [];
+
+    $kolomPecahan = [
+        'kertas_100k',
+        'kertas_50k',
+        'kertas_20k',
+        'kertas_10k',
+        'kertas_5k',
+        'kertas_2k',
+        'kertas_1k',
+        'logam_1k',
+        'logam_500',
+        'logam_200',
+        'logam_100',
+    ];
+
+    foreach (
+        [
+            'Setoran' => 'batasan_setoran',
+            'Penarikan' => 'batasan_penarikan',
+        ] as $jenisFile => $kolomBatasan
+    ) {
+
+        $batasan = round(
+            (float) ($bank->{$kolomBatasan} ?? 0),
+            2
+        );
+
+        /*
+         * Tidak ada batasan.
+         */
+        if ($batasan <= 0) {
+            continue;
+        }
+
+        /*
+         * Ambil semua detail jenis file ini.
+         */
+        $details = $this->details()
+            ->where('jenis_file', $jenisFile)
+            ->get();
+
+        if ($details->isEmpty()) {
+            continue;
+        }
+
+        /*
+         * Hitung total forecast ASLI yang sedang ada
+         * di detail.
+         */
+        $totalSaatIni = round(
+            (float) $details->sum('subtotal'),
+            2
+        );
+
+        /*
+         * Kalau nilainya sudah <= batasan,
+         * tidak perlu melakukan apa pun.
+         */
+        if ($totalSaatIni <= $batasan) {
+            continue;
+        }
+
+        /*
+         * Faktor penyesuaian.
+         */
+        $faktor = $batasan / $totalSaatIni;
+
+        /*
+         * ----------------------------------------------------------
+         * STEP 1
+         * ----------------------------------------------------------
+         * Kalikan semua pecahan dengan faktor.
+         *
+         * Pembulatan dilakukan sampai 2 angka desimal.
+         */
+        foreach ($details as $detail) {
+
+            foreach ($kolomPecahan as $kolom) {
+
+                $nilaiLama = round(
+                    (float) ($detail->{$kolom} ?? 0),
+                    2
+                );
+
+                $nilaiBaru = round(
+                    $nilaiLama * $faktor,
+                    2
+                );
+
+                $detail->{$kolom} = $nilaiBaru;
+            }
+
+            $detail->recalculateSubtotal();
+            $detail->saveQuietly();
+        }
+
+        /*
+         * ----------------------------------------------------------
+         * STEP 2
+         * ----------------------------------------------------------
+         * Setelah pembulatan, hitung ulang total sebenarnya.
+         */
+        $totalSetelahPembulatan = round(
+            (float) $this->details()
+                ->where('jenis_file', $jenisFile)
+                ->sum('subtotal'),
+            2
+        );
+
+        /*
+         * Cari selisih dengan batasan.
+         *
+         * Contoh:
+         * target      = 500.000,00
+         * hasil       = 499.999,98
+         * selisih     = 0,02
+         */
+        $selisih = round(
+            $batasan - $totalSetelahPembulatan,
+            2
+        );
+
+        /*
+         * ----------------------------------------------------------
+         * STEP 3
+         * ----------------------------------------------------------
+         * Koreksi selisih supaya hasil AKHIR benar-benar
+         * sama dengan batasan.
+         *
+         * Kita tambahkan selisih ke pecahan terbesar yang
+         * memiliki nilai > 0.
+         */
+        if (abs($selisih) >= 0.01) {
+
+            $detailKoreksi = $this->details()
+                ->where('jenis_file', $jenisFile)
+                ->get()
+                ->sortByDesc(function ($detail) use ($kolomPecahan) {
+                    return collect($kolomPecahan)
+                        ->map(
+                            fn ($kolom) =>
+                            (float) ($detail->{$kolom} ?? 0)
+                        )
+                        ->max();
+                })
+                ->first();
+
+            if ($detailKoreksi) {
+
+                /*
+                 * Cari pecahan terbesar pada detail tersebut.
+                 */
+                $kolomKoreksi = collect($kolomPecahan)
+                    ->sortByDesc(
+                        fn ($kolom) =>
+                        (float) ($detailKoreksi->{$kolom} ?? 0)
+                    )
+                    ->first();
+
+                if (
+                    $kolomKoreksi &&
+                    (float) ($detailKoreksi->{$kolomKoreksi} ?? 0) > 0
+                ) {
+                    $detailKoreksi->{$kolomKoreksi} = round(
+                        (float) $detailKoreksi->{$kolomKoreksi}
+                        + $selisih,
+                        2
+                    );
+
+                    $detailKoreksi->recalculateSubtotal();
+                    $detailKoreksi->saveQuietly();
+                }
+            }
+        }
+
+        /*
+         * ----------------------------------------------------------
+         * STEP 4
+         * ----------------------------------------------------------
+         * Final verification.
+         */
+        $totalFinal = round(
+            (float) $this->details()
+                ->where('jenis_file', $jenisFile)
+                ->sum('subtotal'),
+            2
+        );
+
+        /*
+         * Jika karena kondisi ekstrem hasil belum sama persis,
+         * lakukan koreksi final.
+         */
+        $selisihFinal = round(
+            $batasan - $totalFinal,
+            2
+        );
+
+        if (abs($selisihFinal) >= 0.01) {
+
+            $detailFinal = $this->details()
+                ->where('jenis_file', $jenisFile)
+                ->get()
+                ->sortByDesc('subtotal')
+                ->first();
+
+            if ($detailFinal) {
+
+                $kolomFinal = collect($kolomPecahan)
+                    ->sortByDesc(
+                        fn ($kolom) =>
+                        (float) ($detailFinal->{$kolom} ?? 0)
+                    )
+                    ->first();
+
+                if (
+                    $kolomFinal &&
+                    (float) ($detailFinal->{$kolomFinal} ?? 0) > 0
+                ) {
+
+                    $detailFinal->{$kolomFinal} = round(
+                        (float) $detailFinal->{$kolomFinal}
+                        + $selisihFinal,
+                        2
+                    );
+
+                    $detailFinal->recalculateSubtotal();
+                    $detailFinal->saveQuietly();
+                }
+            }
+        }
+
+        /*
+         * Recalculate total transaksi.
+         */
+        static::recalculateTotals($this->id);
+
+        $this->refresh();
+
+        /*
+         * Ambil total final untuk ditampilkan di notifikasi.
+         */
+        $totalFinal = round(
+            (float) $this->details()
+                ->where('jenis_file', $jenisFile)
+                ->sum('subtotal'),
+            2
+        );
+
+        $ringkasan[] =
+            "{$jenisFile}: "
+            . number_format($totalSaatIni, 2, ',', '.')
+            . ' -> '
+            . number_format($totalFinal, 2, ',', '.');
+
+        $disesuaikan = true;
+    }
+
+    if ($disesuaikan) {
+
+        /*
+         * Setelah database benar-benar berubah,
+         * baru sinkronkan file Excel.
+         */
+        foreach (['Setoran', 'Penarikan'] as $jenisFile) {
+            $this->syncExcelValuesToFile($jenisFile);
+        }
+
+        Notification::make()
+            ->title('Pengajuan berhasil disesuaikan dengan Batasan EKU')
+            ->body(
+                ($bank->name ?? 'Bank')
+                . ' — '
+                . implode(' | ', $ringkasan)
+            )
+            ->warning()
+            ->persistent()
+            ->send();
+    }
+
+    return $disesuaikan;
+}
     public static function recalculateTotals(int $transactionId): void
     {
         $totals = EkuTransactionDetail::query()
