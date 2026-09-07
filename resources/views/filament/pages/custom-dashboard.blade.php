@@ -272,6 +272,9 @@
                                               bulan: @js($p['bulan']),
                                               setoran: @js($p['setoranFmt']),
                                               penarikan: @js($p['penarikanFmt']),
+                                              kumulatifSetoran: @js($p['kumulatifSetoranFmt']),
+                                              kumulatifPenarikan: @js($p['kumulatifPenarikanFmt']),
+                                              tampilkanKumulatif: @js($p['tampilkanKumulatif']),
                                           }"
                                           @mousemove="mx = $event.clientX; my = $event.clientY"
                                           @mouseleave="tip = null" />
@@ -279,6 +282,7 @@
                             </svg>
 
                             <div x-show="tip" x-cloak
+                                 :style="`left: ${Math.min(mx + 16, window.innerWidth - 230)}px; top: ${Math.min(my + 16, window.innerHeight - 150)}px;`"
                                  class="pointer-events-none fixed z-50 rounded-lg bg-blue-900 dark:bg-gray-800 border border-white/10 text-white text-xs px-3.5 py-2.5 shadow-xl min-w-[190px]">
                                 <template x-if="tip">
                                     <div class="space-y-1.5">
@@ -287,13 +291,13 @@
                                             <span class="flex items-center gap-1.5 text-white/80">
                                                 <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span> Setoran
                                             </span>
-                                            <span class="font-medium" x-text="tip.setoran"></span>
+                                            <span class="font-medium" x-text="tip.tampilkanKumulatif ? (tip.setoran + ' / ' + tip.kumulatifSetoran) : tip.setoran"></span>
                                         </p>
                                         <p class="flex items-center justify-between gap-3">
                                             <span class="flex items-center gap-1.5 text-white/80">
                                                 <span class="w-2 h-2 rounded-full bg-rose-400 inline-block"></span> Penarikan
                                             </span>
-                                            <span class="font-medium" x-text="tip.penarikan"></span>
+                                            <span class="font-medium" x-text="tip.tampilkanKumulatif ? (tip.penarikan + ' / ' + tip.kumulatifPenarikan) : tip.penarikan"></span>
                                         </p>
                                     </div>
                                 </template>

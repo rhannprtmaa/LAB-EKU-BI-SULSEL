@@ -84,7 +84,14 @@ class HistoryRelationManager extends RelationManager
                     ->url(fn ($state) => $state ? Storage::disk('public')->url($state) : null)
                     ->openUrlInNewTab()
                     ->color('primary')
-                    ->icon('heroicon-o-document-arrow-down'),
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->visible(
+                        fn (): bool =>
+                            (bool) (
+                                CurrentUser::get()?->isUserBi()
+                                || CurrentUser::get()?->isAdminBi()
+                            )
+                    ),
 
                 TextColumn::make('keterangan')
                     ->label('Keterangan')

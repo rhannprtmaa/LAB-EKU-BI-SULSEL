@@ -9,6 +9,10 @@ class ListBanks extends ListRecords
     protected static string $resource = BankResource::class;
     protected function getHeaderActions(): array
     {
-        return [CreateAction::make()];
+        return [
+            CreateAction::make()
+                ->createAnother(false)
+                ->modalSubmitActionLabel('Submit'),
+        ];
     }
 }

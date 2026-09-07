@@ -270,10 +270,17 @@ class Dashboard extends BaseDashboard implements HasForms
 
         $bulanPenuh = $this->bulanUrut();
         $points = [];
+        $kumulatifSetoran = 0.0;
+        $kumulatifPenarikan = 0.0;
+
         foreach ($data['labels'] as $i => $label) {
             $setoranValue = $data['setoran'][$i] ?? 0.0;
             $penarikanValue = $data['penarikan'][$i] ?? 0.0;
             $total = $setoranValue + $penarikanValue;
+
+            // Akumulasi berjalan dari bulan pertama s.d bulan ke-i (dipakai untuk tooltip: "value / akumulasi")
+            $kumulatifSetoran += $setoranValue;
+            $kumulatifPenarikan += $penarikanValue;
 
             $points[] = [
                 'x' => $setoranXY[$i][0] ?? round($paddingLeft + $i * $stepX, 1),
@@ -285,6 +292,11 @@ class Dashboard extends BaseDashboard implements HasForms
                 'totalFmt' => $this->formatRupiahPenuh($total),
                 'persenSetoran' => $total > 0 ? round($setoranValue / $total * 100, 1) : 0,
                 'persenPenarikan' => $total > 0 ? round($penarikanValue / $total * 100, 1) : 0,
+                // Akumulasi s.d bulan ini. Untuk bulan pertama (i === 0), akumulasinya sama
+                // dengan nilai bulan itu sendiri sehingga tidak perlu ditampilkan terpisah.
+                'kumulatifSetoranFmt' => $this->formatRupiahPenuh($kumulatifSetoran),
+                'kumulatifPenarikanFmt' => $this->formatRupiahPenuh($kumulatifPenarikan),
+                'tampilkanKumulatif' => $i > 0,
             ];
         }
 

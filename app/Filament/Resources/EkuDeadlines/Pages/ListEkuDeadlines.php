@@ -16,7 +16,9 @@ class ListEkuDeadlines extends ListRecords
         return [
             CreateAction::make()
                 ->label('Atur Batas Waktu')
-                ->modalWidth(Width::Medium),
+                ->modalWidth(Width::Medium)
+                ->createAnother(false)
+                ->modalSubmitActionLabel('Submit'),
         ];
     }
 }

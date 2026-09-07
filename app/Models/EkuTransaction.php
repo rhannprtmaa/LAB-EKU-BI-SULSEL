@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 use Filament\Notifications\Notification;
 use App\Models\EkuDeadline;
 use App\Services\NotifikasiService;
+use App\Support\EkuExcelParser;
 
 class EkuTransaction extends Model
 {
@@ -251,9 +252,9 @@ class EkuTransaction extends Model
 
     foreach (
         [
-            'Setoran' => 'batasan_setoran',
-            'Penarikan' => 'batasan_penarikan',
-        ] as $jenisFile => $kolomBatasan
+            'Setoran' => ['batasan_setoran', 'file_batasan_setoran'],
+            'Penarikan' => ['batasan_penarikan', 'file_batasan_penarikan'],
+        ] as $jenisFile => [$kolomBatasan, $kolomFile]
     ) {
 
         $batasan = round(
@@ -297,183 +298,140 @@ class EkuTransaction extends Model
         }
 
         /*
-         * Faktor penyesuaian.
-         */
-        $faktor = $batasan / $totalSaatIni;
-
-        /*
          * ----------------------------------------------------------
-         * STEP 1
+         * Coba baca rincian PER BULAN x PER PECAHAN dari file batasan
+         * yang diupload BI (bukan cuma total angkanya saja).
          * ----------------------------------------------------------
-         * Kalikan semua pecahan dengan faktor.
-         *
-         * Pembulatan dilakukan sampai 2 angka desimal.
          */
-        foreach ($details as $detail) {
+        $rincianBatasan = EkuExcelParser::rincianDariFile($bank->{$kolomFile}, $jenisFile);
 
-            foreach ($kolomPecahan as $kolom) {
+        if (! empty($rincianBatasan)) {
 
-                $nilaiLama = round(
-                    (float) ($detail->{$kolom} ?? 0),
-                    2
-                );
+            /*
+             * ------------------------------------------------------
+             * MODE ABSOLUT
+             * ------------------------------------------------------
+             * Terapkan angka PERSIS dari file batasan, per bulan x
+             * per pecahan. Ini penting: kalau BI cuma mengubah SATU
+             * pecahan di file batasan (misalnya Rp20.000 dikurangi
+             * Rp1.000.000), maka HANYA pecahan itu yang berubah di
+             * pengajuan bank. Pecahan lain tetap seperti semula --
+             * tidak ikut terpotong seperti pemotongan proporsional
+             * yang lama (yang salah karena mengalikan SEMUA pecahan
+             * dengan faktor yang sama, padahal BI cuma mau mengubah
+             * satu pecahan tertentu).
+             */
+            foreach ($details as $detail) {
 
-                $nilaiBaru = round(
-                    $nilaiLama * $faktor,
-                    2
-                );
+                $target = $rincianBatasan[$detail->bulan] ?? null;
 
-                $detail->{$kolom} = $nilaiBaru;
+                if (! $target) {
+                    continue;
+                }
+
+                foreach ($kolomPecahan as $kolom) {
+                    $detail->{$kolom} = round(
+                        (float) ($target[$kolom] ?? 0),
+                        2
+                    );
+                }
+
+                $detail->recalculateSubtotal();
+                $detail->saveQuietly();
+            }
+        } else {
+
+            /*
+             * ------------------------------------------------------
+             * MODE PROPORSIONAL (fallback)
+             * ------------------------------------------------------
+             * Dipakai HANYA kalau BI belum mengupload file rincian
+             * batasan -- cuma mengisi angka batasan total secara
+             * manual. Karena tidak ada rincian per pecahan untuk
+             * dijadikan acuan, satu-satunya cara yang tersisa adalah
+             * memotong rata semua pecahan dengan faktor yang sama.
+             */
+            $faktor = $batasan / $totalSaatIni;
+
+            foreach ($details as $detail) {
+
+                foreach ($kolomPecahan as $kolom) {
+
+                    $nilaiLama = round(
+                        (float) ($detail->{$kolom} ?? 0),
+                        2
+                    );
+
+                    $detail->{$kolom} = round(
+                        $nilaiLama * $faktor,
+                        2
+                    );
+                }
+
+                $detail->recalculateSubtotal();
+                $detail->saveQuietly();
             }
 
-            $detail->recalculateSubtotal();
-            $detail->saveQuietly();
-        }
+            /*
+             * Koreksi selisih pembulatan supaya hasil akhir benar-benar
+             * sama dengan batasan. Ditambahkan ke pecahan terbesar yang
+             * memiliki nilai > 0.
+             */
+            $totalSetelahPembulatan = round(
+                (float) $this->details()
+                    ->where('jenis_file', $jenisFile)
+                    ->sum('subtotal'),
+                2
+            );
 
-        /*
-         * ----------------------------------------------------------
-         * STEP 2
-         * ----------------------------------------------------------
-         * Setelah pembulatan, hitung ulang total sebenarnya.
-         */
-        $totalSetelahPembulatan = round(
-            (float) $this->details()
-                ->where('jenis_file', $jenisFile)
-                ->sum('subtotal'),
-            2
-        );
+            $selisih = round(
+                $batasan - $totalSetelahPembulatan,
+                2
+            );
 
-        /*
-         * Cari selisih dengan batasan.
-         *
-         * Contoh:
-         * target      = 500.000,00
-         * hasil       = 499.999,98
-         * selisih     = 0,02
-         */
-        $selisih = round(
-            $batasan - $totalSetelahPembulatan,
-            2
-        );
+            if (abs($selisih) >= 0.01) {
 
-        /*
-         * ----------------------------------------------------------
-         * STEP 3
-         * ----------------------------------------------------------
-         * Koreksi selisih supaya hasil AKHIR benar-benar
-         * sama dengan batasan.
-         *
-         * Kita tambahkan selisih ke pecahan terbesar yang
-         * memiliki nilai > 0.
-         */
-        if (abs($selisih) >= 0.01) {
+                $detailKoreksi = $this->details()
+                    ->where('jenis_file', $jenisFile)
+                    ->get()
+                    ->sortByDesc(function ($detail) use ($kolomPecahan) {
+                        return collect($kolomPecahan)
+                            ->map(
+                                fn ($kolom) =>
+                                (float) ($detail->{$kolom} ?? 0)
+                            )
+                            ->max();
+                    })
+                    ->first();
 
-            $detailKoreksi = $this->details()
-                ->where('jenis_file', $jenisFile)
-                ->get()
-                ->sortByDesc(function ($detail) use ($kolomPecahan) {
-                    return collect($kolomPecahan)
-                        ->map(
+                if ($detailKoreksi) {
+
+                    $kolomKoreksi = collect($kolomPecahan)
+                        ->sortByDesc(
                             fn ($kolom) =>
-                            (float) ($detail->{$kolom} ?? 0)
+                            (float) ($detailKoreksi->{$kolom} ?? 0)
                         )
-                        ->max();
-                })
-                ->first();
+                        ->first();
 
-            if ($detailKoreksi) {
+                    if (
+                        $kolomKoreksi &&
+                        (float) ($detailKoreksi->{$kolomKoreksi} ?? 0) > 0
+                    ) {
+                        $detailKoreksi->{$kolomKoreksi} = round(
+                            (float) $detailKoreksi->{$kolomKoreksi}
+                            + $selisih,
+                            2
+                        );
 
-                /*
-                 * Cari pecahan terbesar pada detail tersebut.
-                 */
-                $kolomKoreksi = collect($kolomPecahan)
-                    ->sortByDesc(
-                        fn ($kolom) =>
-                        (float) ($detailKoreksi->{$kolom} ?? 0)
-                    )
-                    ->first();
-
-                if (
-                    $kolomKoreksi &&
-                    (float) ($detailKoreksi->{$kolomKoreksi} ?? 0) > 0
-                ) {
-                    $detailKoreksi->{$kolomKoreksi} = round(
-                        (float) $detailKoreksi->{$kolomKoreksi}
-                        + $selisih,
-                        2
-                    );
-
-                    $detailKoreksi->recalculateSubtotal();
-                    $detailKoreksi->saveQuietly();
+                        $detailKoreksi->recalculateSubtotal();
+                        $detailKoreksi->saveQuietly();
+                    }
                 }
             }
         }
 
         /*
-         * ----------------------------------------------------------
-         * STEP 4
-         * ----------------------------------------------------------
-         * Final verification.
-         */
-        $totalFinal = round(
-            (float) $this->details()
-                ->where('jenis_file', $jenisFile)
-                ->sum('subtotal'),
-            2
-        );
-
-        /*
-         * Jika karena kondisi ekstrem hasil belum sama persis,
-         * lakukan koreksi final.
-         */
-        $selisihFinal = round(
-            $batasan - $totalFinal,
-            2
-        );
-
-        if (abs($selisihFinal) >= 0.01) {
-
-            $detailFinal = $this->details()
-                ->where('jenis_file', $jenisFile)
-                ->get()
-                ->sortByDesc('subtotal')
-                ->first();
-
-            if ($detailFinal) {
-
-                $kolomFinal = collect($kolomPecahan)
-                    ->sortByDesc(
-                        fn ($kolom) =>
-                        (float) ($detailFinal->{$kolom} ?? 0)
-                    )
-                    ->first();
-
-                if (
-                    $kolomFinal &&
-                    (float) ($detailFinal->{$kolomFinal} ?? 0) > 0
-                ) {
-
-                    $detailFinal->{$kolomFinal} = round(
-                        (float) $detailFinal->{$kolomFinal}
-                        + $selisihFinal,
-                        2
-                    );
-
-                    $detailFinal->recalculateSubtotal();
-                    $detailFinal->saveQuietly();
-                }
-            }
-        }
-
-        /*
-         * Recalculate total transaksi.
-         */
-        static::recalculateTotals($this->id);
-
-        $this->refresh();
-
-        /*
-         * Ambil total final untuk ditampilkan di notifikasi.
+         * Final verification / ringkasan notifikasi.
          */
         $totalFinal = round(
             (float) $this->details()
@@ -492,6 +450,14 @@ class EkuTransaction extends Model
     }
 
     if ($disesuaikan) {
+
+        /*
+         * Sinkronkan kolom agregat di tabel eku_transactions dengan
+         * detail yang baru saja diubah.
+         */
+        static::recalculateTotals($this->id);
+
+        $this->refresh();
 
         /*
          * Setelah database benar-benar berubah,
