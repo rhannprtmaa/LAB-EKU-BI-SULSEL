@@ -54,7 +54,6 @@ class DetailsRelationManager extends RelationManager
         $kolom = [
             TextColumn::make('bulan')
                 ->label('Bulan')
-                ->searchable()
                 ->summarize(
                     \Filament\Tables\Columns\Summarizers\Summarizer::make()
                         ->label('Grand Total')

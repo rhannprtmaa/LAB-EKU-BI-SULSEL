@@ -14,10 +14,10 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\Width;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class EkuTransactionsTable
 {
@@ -52,34 +52,6 @@ class EkuTransactionsTable
                     ->formatStateUsing(fn ($state) => is_null($state) ? '-' : Rupiah::format((float) $state))
                     ->sortable(),
 
-                TextColumn::make('total_realisasi_setoran')
-                    ->label('Realisasi Setoran')
-                    ->formatStateUsing(fn ($state) => is_null($state) ? '-' : Rupiah::format((float) $state))
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('total_realisasi_penarikan')
-                    ->label('Realisasi Penarikan')
-                    ->formatStateUsing(fn ($state) => is_null($state) ? '-' : Rupiah::format((float) $state))
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('deviasi_setoran')
-                    ->label('Deviasi Setoran')
-                    ->formatStateUsing(fn ($state) => is_null($state) ? '-' : Rupiah::formatMines((float) $state))
-                    ->placeholder('-')
-                    ->color(fn ($state) => $state < 0 ? 'danger' : ($state > 0 ? 'success' : 'gray'))
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('deviasi_penarikan')
-                    ->label('Deviasi Penarikan')
-                    ->formatStateUsing(fn ($state) => is_null($state) ? '-' : Rupiah::formatMines((float) $state))
-                    ->placeholder('-')
-                    ->color(fn ($state) => $state < 0 ? 'danger' : ($state > 0 ? 'success' : 'gray'))
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
@@ -91,17 +63,9 @@ class EkuTransactionsTable
                         default => 'gray',
                     }),
 
-                IconColumn::make('is_edited_by_bi')
-                    ->label('Direvisi BI')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-pencil-square')
-                    ->falseIcon('heroicon-o-minus')
-                    ->toggleable(isToggledHiddenByDefault: true),
-
                 TextColumn::make('approver.name')
                     ->label('Direview oleh')
-                    ->placeholder('-')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->placeholder('-'),
 
                 TextColumn::make('created_at')
                     ->label('Tanggal Pengajuan')
@@ -110,6 +74,23 @@ class EkuTransactionsTable
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
+                SelectFilter::make('periode')
+    ->label('Tahun Periode')
+    ->options(function () {
+        return EkuTransaction::query()
+            ->whereNotNull('periode')
+            ->distinct()
+            ->orderBy('periode', 'desc')
+            ->pluck('periode', 'periode')
+            ->toArray();
+    })
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['value'],
+                            fn (Builder $query, $tahun) => $query->whereYear('created_at', $tahun)
+                        );
+                    }),
+
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options(EkuTransaction::statusOptions()),

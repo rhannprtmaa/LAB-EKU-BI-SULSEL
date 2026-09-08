@@ -104,9 +104,43 @@
                         </div>
                     @else
                         {{-- GRID 2 KOLOM (Kiri Realisasi, Kanan Deviasi) --}}
-                        <div class="w-full h-full grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 divide-y lg:divide-y-0 lg:divide-x divide-gray-100 dark:divide-gray-800"
-                             x-data="{ animate: false }"
-                             x-init="requestAnimationFrame(() => requestAnimationFrame(() => animate = true))">
+                        <div class="w-full h-full grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 divide-y lg:divide-y-0 lg:divide-x divide-gray-100 dark:divide-gray-800 relative"
+                             x-data="{ animate: false, hoverTip: null, mx: 0, my: 0 }"
+                             x-init="requestAnimationFrame(() => requestAnimationFrame(() => animate = true))"
+                             @mousemove="mx = $event.clientX; my = $event.clientY">
+
+                            {{-- TOOLTIP MELAYANG (mengikuti kursor) -- dipakai bareng oleh kedua donut chart --}}
+                            <div x-show="hoverTip" x-cloak
+                                 :style="`left: ${Math.min(mx + 16, window.innerWidth - 230)}px; top: ${Math.min(my + 16, window.innerHeight - 170)}px;`"
+                                 class="pointer-events-none fixed z-50 rounded-lg bg-blue-900 dark:bg-gray-800 border border-white/10 text-white text-xs px-3.5 py-2.5 shadow-xl min-w-[190px]">
+                                <template x-if="hoverTip">
+                                    <div class="space-y-1.5">
+                                        <p class="font-semibold text-sm text-white flex items-center gap-2">
+                                            <span class="w-2.5 h-2.5 rounded-full inline-block" :style="`background-color: ${hoverTip.color}`"></span>
+                                            <span x-text="hoverTip.label"></span>
+                                        </p>
+                                        <p class="flex items-center justify-between gap-3">
+                                            <span class="text-white/80">Total</span>
+                                            <span class="font-medium" x-text="hoverTip.total"></span>
+                                        </p>
+                                        <template x-if="hoverTip.sisa">
+                                            <p class="flex items-center justify-between gap-3">
+                                                <span class="text-white/80">Status</span>
+                                                <span class="font-medium" x-text="hoverTip.sisa"></span>
+                                            </p>
+                                        </template>
+                                        <div class="border-t border-white/10 my-1.5"></div>
+                                        <p class="flex items-center justify-between gap-3">
+                                            <span class="text-white/80">UPB</span>
+                                            <span class="font-medium" x-text="hoverTip.upb"></span>
+                                        </p>
+                                        <p class="flex items-center justify-between gap-3">
+                                            <span class="text-white/80">UPK</span>
+                                            <span class="font-medium" x-text="hoverTip.upk"></span>
+                                        </p>
+                                    </div>
+                                </template>
+                            </div>
 
                             {{-- KOLOM KIRI: KOMPOSISI REALISASI --}}
                             <div class="flex flex-col h-full w-full py-2 lg:pr-4">
@@ -121,8 +155,11 @@
                                                     <circle cx="100" cy="100" r="{{ $pieRealisasi['radius'] }}" fill="none" stroke="currentColor" class="text-gray-100 dark:text-gray-800" stroke-width="{{ $pieRealisasi['strokeWidth'] }}" />
                                                     @foreach ($pieRealisasi['slices'] as $i => $slice)
                                                         <circle cx="100" cy="100" r="{{ $pieRealisasi['radius'] }}" fill="none" stroke="{{ $slice['color'] }}" stroke-width="{{ $pieRealisasi['strokeWidth'] }}" stroke-linecap="round" stroke-dashoffset="{{ $slice['dashOffset'] }}"
+                                                                class="cursor-pointer"
                                                                 :stroke-dasharray="animate ? '{{ $slice['dashLen'] }} {{ $pieRealisasi['circumference'] }}' : '0 {{ $pieRealisasi['circumference'] }}'"
-                                                                style="transition: stroke-dasharray 1s cubic-bezier(0.4,0,0.2,1) {{ $i * 0.15 }}s;" />
+                                                                style="transition: stroke-dasharray 1s cubic-bezier(0.4,0,0.2,1) {{ $i * 0.15 }}s;"
+                                                                @mousemove="mx = $event.clientX; my = $event.clientY" @mouseenter="mx = $event.clientX; my = $event.clientY; hoverTip = { label: @js($slice['label']), color: @js($slice['color']), total: @js($slice['valueFmt']), upb: @js($slice['upbFmt']), upk: @js($slice['upkFmt']), sisa: null }"
+                                                                @mouseleave="hoverTip = null" />
                                                     @endforeach
                                                 </g>
                                             </svg>
@@ -135,7 +172,9 @@
                                         {{-- Keterangan Detail Realisasi --}}
                                         <div class="flex-1 w-full max-w-xs flex flex-col justify-center gap-4">
                                             @foreach ($pieRealisasi['slices'] as $i => $slice)
-                                                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-100 dark:border-gray-700/50">
+                                                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-100 dark:border-gray-700/50 cursor-pointer transition-colors hover:border-gray-200 dark:hover:border-gray-600"
+                                                     @mousemove="mx = $event.clientX; my = $event.clientY" @mouseenter="mx = $event.clientX; my = $event.clientY; hoverTip = { label: @js($slice['label']), color: @js($slice['color']), total: @js($slice['valueFmt']), upb: @js($slice['upbFmt']), upk: @js($slice['upkFmt']), sisa: null }"
+                                                     @mouseleave="hoverTip = null">
                                                     <div class="flex justify-between items-start mb-2">
                                                         <div>
                                                             <div class="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 text-sm">
@@ -161,9 +200,9 @@
                                 @endif
                             </div>
 
-                            {{-- KOLOM KANAN: STATUS DEVIASI --}}
+                            {{-- KOLOM KANAN: KOMPOSISI DEVIASI --}}
                             <div class="flex flex-col h-full w-full py-2 lg:pl-4 pt-8 lg:pt-2">
-                                <h4 class="text-center font-semibold text-gray-700 dark:text-gray-300 mb-6 uppercase tracking-wide text-sm">Status Deviasi (Forecast vs Realisasi)</h4>
+                                <h4 class="text-center font-semibold text-gray-700 dark:text-gray-300 mb-6 uppercase tracking-wide text-sm">Komposisi Deviasi EKU (Sisa dari Total)</h4>
 
                                 @if ($pieDeviasi['hasData'])
                                     <div class="flex flex-col xl:flex-row items-center justify-center gap-8 w-full">
@@ -174,8 +213,11 @@
                                                     <circle cx="100" cy="100" r="{{ $pieDeviasi['radius'] }}" fill="none" stroke="currentColor" class="text-gray-100 dark:text-gray-800" stroke-width="{{ $pieDeviasi['strokeWidth'] }}" />
                                                     @foreach ($pieDeviasi['slices'] as $i => $slice)
                                                         <circle cx="100" cy="100" r="{{ $pieDeviasi['radius'] }}" fill="none" stroke="{{ $slice['color'] }}" stroke-width="{{ $pieDeviasi['strokeWidth'] }}" stroke-linecap="round" stroke-dashoffset="{{ $slice['dashOffset'] }}"
+                                                                class="cursor-pointer"
                                                                 :stroke-dasharray="animate ? '{{ $slice['dashLen'] }} {{ $pieDeviasi['circumference'] }}' : '0 {{ $pieDeviasi['circumference'] }}'"
-                                                                style="transition: stroke-dasharray 1s cubic-bezier(0.4,0,0.2,1) {{ $i * 0.15 }}s;" />
+                                                                style="transition: stroke-dasharray 1s cubic-bezier(0.4,0,0.2,1) {{ $i * 0.15 }}s;"
+                                                                @mousemove="mx = $event.clientX; my = $event.clientY" @mouseenter="mx = $event.clientX; my = $event.clientY; hoverTip = { label: @js($slice['label']), color: @js($slice['color']), total: @js($slice['valueFmt']), upb: @js($slice['upbFmt']), upk: @js($slice['upkFmt']), sisa: @js($slice['sisaFmt']) }"
+                                                                @mouseleave="hoverTip = null" />
                                                     @endforeach
                                                 </g>
                                             </svg>
@@ -188,7 +230,9 @@
                                         {{-- Keterangan Detail Deviasi --}}
                                         <div class="flex-1 w-full max-w-xs flex flex-col justify-center gap-4">
                                             @foreach ($pieDeviasi['slices'] as $i => $slice)
-                                                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-100 dark:border-gray-700/50">
+                                                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-100 dark:border-gray-700/50 cursor-pointer transition-colors hover:border-gray-200 dark:hover:border-gray-600"
+                                                     @mousemove="mx = $event.clientX; my = $event.clientY" @mouseenter="mx = $event.clientX; my = $event.clientY; hoverTip = { label: @js($slice['label']), color: @js($slice['color']), total: @js($slice['valueFmt']), upb: @js($slice['upbFmt']), upk: @js($slice['upkFmt']), sisa: @js($slice['sisaFmt']) }"
+                                                     @mouseleave="hoverTip = null">
                                                     <div class="flex justify-between items-start mb-2">
                                                         <div>
                                                             <div class="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 text-sm">
