@@ -7,6 +7,7 @@ use App\Models\KnowledgePost;
 use App\Support\CurrentUser;
 use App\Support\UploadedFileNaming;
 use BackedEnum;
+use UnitEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
@@ -29,8 +30,9 @@ class KnowledgePostResource extends Resource
     protected static ?string $model = KnowledgePost::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-academic-cap';
-    protected static ?string $navigationLabel = 'Kelola Knowledge Center';
-    protected static ?string $modelLabel = 'Materi Knowledge Center';
+    protected static string|UnitEnum|null $navigationGroup = 'Penataan';
+    protected static ?string $navigationLabel = 'Penataan Informasi';
+    protected static ?string $modelLabel = 'Materi Informasi';
     protected static ?int $navigationSort = 4;
 
     // Hanya Admin BI yang boleh mengelola (buat/edit/hapus) materi Knowledge

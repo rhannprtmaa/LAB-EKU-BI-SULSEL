@@ -30,9 +30,9 @@ class ReportEku extends Page implements HasTable
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-chart-bar';
 
-    protected static ?string $navigationLabel = 'Reporting EKU';
+    protected static ?string $navigationLabel = 'Laporan EKU';
 
-    protected static ?string $title = 'Reporting EKU';
+    protected static ?string $title = 'Laporan EKU';
 
     protected static ?int $navigationSort = 5;
 

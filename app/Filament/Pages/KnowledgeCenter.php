@@ -9,8 +9,8 @@ use Filament\Pages\Page;
 class KnowledgeCenter extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-book-open';
-    protected static ?string $title = 'Knowledge Center EKU';
-    protected static ?string $navigationLabel = 'Knowledge Center';
+    protected static ?string $title = 'Pusat Informasi EKU';
+    protected static ?string $navigationLabel = 'Pusat Informasi';
     protected static ?int $navigationSort = 3;
 
     protected string $view = 'filament.pages.knowledge-center';

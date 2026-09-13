@@ -19,8 +19,8 @@ class UserResource extends Resource
     protected static ?string $model = User::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
-    protected static string|UnitEnum|null $navigationGroup = null;
-    protected static ?string $navigationLabel = 'User Management ';
+    protected static string|UnitEnum|null $navigationGroup = 'Penataan';
+    protected static ?string $navigationLabel = 'Penataan User';
     protected static ?string $pluralModelLabel = 'Daftar Pengguna';
 
     // FIX SIDEBAR: Urutan ketiga di menu

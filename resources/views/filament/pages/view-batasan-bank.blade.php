@@ -5,7 +5,7 @@
         <div>
             <a href="{{ \App\Filament\Pages\ManagementEku::getUrl() }}" class="inline-flex items-center space-x-2 text-sm font-medium text-gray-500 hover:text-[#054177] dark:text-gray-400 dark:hover:text-gray-200 transition">
                 <x-heroicon-o-arrow-left class="w-4 h-4" />
-                <span>Kembali ke Management EKU</span>
+                <span>Kembali ke Penataan EKU</span>
             </a>
         </div>
 
@@ -232,4 +232,4 @@
         </div>
 
     </div>
-</x-filament-panels::page>
+</x-filament-panels::page>  

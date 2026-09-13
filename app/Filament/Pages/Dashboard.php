@@ -45,7 +45,7 @@ class Dashboard extends BaseDashboard implements HasForms
         return $schema
             ->components([
                 Select::make('jenisGrafik')
-                    ->label('Kategori')
+                    ->label('Jenis Grafik')
                     ->live()
                     ->options([
                         'forecast_eku' => 'Forecast EKU',
@@ -268,6 +268,7 @@ class Dashboard extends BaseDashboard implements HasForms
         }
 
         $bulanPenuh = $this->bulanUrut();
+        $bulanSingkat = $this->bulanSingkat();
         $points = [];
         $kumulatifSetoran = 0.0;
         $kumulatifPenarikan = 0.0;
@@ -280,6 +281,9 @@ class Dashboard extends BaseDashboard implements HasForms
             // Akumulasi berjalan dari bulan pertama s.d bulan ke-i (dipakai untuk tooltip: "value / akumulasi")
             $kumulatifSetoran += $setoranValue;
             $kumulatifPenarikan += $penarikanValue;
+
+            // Keterangan rentang bulan untuk label akumulasi, mis. "(Jan-Mar)" saat di titik Maret.
+            $rentangKumulatif = $i > 0 ? '(' . ($bulanSingkat[0] ?? '') . '-' . ($bulanSingkat[$i] ?? '') . ')' : '';
 
             $points[] = [
                 'x' => $setoranXY[$i][0] ?? round($paddingLeft + $i * $stepX, 1),
@@ -295,6 +299,7 @@ class Dashboard extends BaseDashboard implements HasForms
                 // dengan nilai bulan itu sendiri sehingga tidak perlu ditampilkan terpisah.
                 'kumulatifSetoranFmt' => $this->formatRupiahPenuh($kumulatifSetoran),
                 'kumulatifPenarikanFmt' => $this->formatRupiahPenuh($kumulatifPenarikan),
+                'rentangKumulatif' => $rentangKumulatif,
                 'tampilkanKumulatif' => $i > 0,
             ];
         }
@@ -314,102 +319,119 @@ class Dashboard extends BaseDashboard implements HasForms
      * PERBAIKAN 1: Menarik data UPB & UPK dari tabel RealisasiDetail terbaru
      */
     /**
-     * Komposisi Realisasi EKU berdasarkan Setoran vs Penarikan (bukan UPB vs UPK).
-     * Breakdown UPB/UPK tetap dihitung dan dikirim lewat key 'detail' -- dipakai
-     * untuk overview saat cursor diarahkan (hover) ke slice terkait, bukan
-     * ditampilkan langsung sebagai slice di grafik.
+     * Komposisi Setoran EKU: Realisasi vs Sisa (Deviasi), keduanya dihitung
+     * dari Total Proyeksi Setoran. Breakdown UPB/UPK tetap dihitung dan
+     * dikirim lewat 'detail' -- dipakai untuk overview saat hover, bukan
+     * ditampilkan langsung sebagai slice.
      */
-    protected function realisasiChartData(): array
-    {
-        $approvedIds = (clone $this->scopedTransactionsQuery())
-            ->where('status', \App\Models\EkuTransaction::STATUS_DISETUJUI)
-            ->pluck('id');
-
-        $realisasiIds = \App\Models\EkuTransactionRealisasi::whereIn('eku_transaction_id', $approvedIds)->pluck('id');
-
-        $baseQuery = fn (string $jenis) => \App\Models\EkuTransactionRealisasiDetail::whereIn('eku_transaction_realisasi_id', $realisasiIds)
-            ->where('jenis_file', $jenis);
-
-        $setoranTotal = (float) $baseQuery('Setoran')->sum('subtotal');
-        $setoranUpb = (float) $baseQuery('Setoran')->sum('total_upb');
-        $setoranUpk = (float) $baseQuery('Setoran')->sum('total_upk');
-
-        $penarikanTotal = (float) $baseQuery('Penarikan')->sum('subtotal');
-        $penarikanUpb = (float) $baseQuery('Penarikan')->sum('total_upb');
-        $penarikanUpk = (float) $baseQuery('Penarikan')->sum('total_upk');
-
-        return [
-            'labels' => ['Setoran', 'Penarikan'],
-            'values' => [$setoranTotal, $penarikanTotal],
-            'colors' => ['#10b981', '#3b82f6'],
-            'detail' => [
-                ['upb' => $setoranUpb, 'upk' => $setoranUpk],
-                ['upb' => $penarikanUpb, 'upk' => $penarikanUpk],
-            ],
-        ];
-    }
-
-    /**
-     * Komposisi Deviasi (sisa) EKU berdasarkan Setoran vs Penarikan, konsisten
-     * dengan struktur Realisasi di atas. Breakdown UPB/UPK sisa dikirim lewat
-     * 'detail' untuk ditampilkan saat hover, bukan langsung sebagai slice.
-     *
-     * PERBAIKAN: Menggunakan EkuReportCalculator agar 100% konsisten dengan tabel Reporting
-     */
-    protected function deviasiChartData(): array
+    protected function setoranChartData(): array
     {
         $approvedIds = (clone $this->scopedTransactionsQuery())
             ->where('status', EkuTransaction::STATUS_DISETUJUI)
             ->pluck('id');
 
-        $deviasiSetoran = 0.0;
-        $deviasiSetoranUpb = 0.0;
-        $deviasiSetoranUpk = 0.0;
-
-        $deviasiPenarikan = 0.0;
-        $deviasiPenarikanUpb = 0.0;
-        $deviasiPenarikanUpk = 0.0;
+        $totalProyeksi = 0.0;
+        $totalRealisasi = 0.0;
+        $realisasiUpb = 0.0;
+        $realisasiUpk = 0.0;
+        $deviasi = 0.0;
+        $deviasiUpb = 0.0;
+        $deviasiUpk = 0.0;
 
         EkuTransaction::query()
             ->whereIn('id', $approvedIds)
             ->get()
             ->each(function (EkuTransaction $trx) use (
-                &$deviasiSetoran, &$deviasiSetoranUpb, &$deviasiSetoranUpk,
-                &$deviasiPenarikan, &$deviasiPenarikanUpb, &$deviasiPenarikanUpk,
+                &$totalProyeksi, &$totalRealisasi, &$realisasiUpb, &$realisasiUpk,
+                &$deviasi, &$deviasiUpb, &$deviasiUpk,
             ) {
-                // Gunakan Kalkulator yang sama dengan Halaman Reporting EKU
                 $laporan = EkuReportCalculator::hitung($trx);
 
-                $deviasiSetoran += $laporan['deviasiSetoran'];
-                $deviasiSetoranUpb += $laporan['deviasiSetoranUpb'];
-                $deviasiSetoranUpk += $laporan['deviasiSetoranUpk'];
+                $totalProyeksi += $laporan['setoranTotal'];
+                $totalRealisasi += $laporan['realisasiSetoran'];
+                $realisasiUpb += $laporan['realisasiSetoranUpb'];
+                $realisasiUpk += $laporan['realisasiSetoranUpk'];
 
-                $deviasiPenarikan += $laporan['deviasiPenarikan'];
-                $deviasiPenarikanUpb += $laporan['deviasiPenarikanUpb'];
-                $deviasiPenarikanUpk += $laporan['deviasiPenarikanUpk'];
+                $deviasi += $laporan['deviasiSetoran'];
+                $deviasiUpb += $laporan['deviasiSetoranUpb'];
+                $deviasiUpk += $laporan['deviasiSetoranUpk'];
             });
 
+        // Sisa untuk ukuran slice tidak boleh negatif (over-realisasi -> sisa dianggap 0,
+        // status "over" tetap terlihat lewat 'sisaFmt' bertanda saat hover).
+        $sisa = max(0, $deviasi);
+
         return [
-            'labels' => ['Sisa Setoran', 'Sisa Penarikan'],
-            // Ukuran slice donut pakai magnitude (abs), karena panjang busur tidak
-            // bisa negatif. Nilai asli (bertanda) tetap disimpan di 'detail' untuk hover.
-            'values' => [abs($deviasiSetoran), abs($deviasiPenarikan)],
-            'colors' => ['#f59e0b', '#ef4444'],
+            'labels' => ['Realisasi', 'Sisa (Deviasi)'],
+            'values' => [$totalRealisasi, $sisa],
+            'colors' => ['#10b981', '#f59e0b'],
+            'totalLabelOverride' => $totalProyeksi,
             'detail' => [
-                ['upb' => $deviasiSetoranUpb, 'upk' => $deviasiSetoranUpk, 'total' => $deviasiSetoran],
-                ['upb' => $deviasiPenarikanUpb, 'upk' => $deviasiPenarikanUpk, 'total' => $deviasiPenarikan],
+                ['upb' => $realisasiUpb, 'upk' => $realisasiUpk],
+                ['upb' => $deviasiUpb, 'upk' => $deviasiUpk, 'total' => $deviasi],
             ],
         ];
     }
 
-    public function realisasiPieData(): array
+    /**
+     * Komposisi Penarikan EKU -- struktur sama persis dengan Setoran di atas,
+     * hanya sumber datanya dari sisi Penarikan.
+     */
+    protected function penarikanChartData(): array
     {
-        return $this->donutSvgData($this->realisasiChartData());
+        $approvedIds = (clone $this->scopedTransactionsQuery())
+            ->where('status', EkuTransaction::STATUS_DISETUJUI)
+            ->pluck('id');
+
+        $totalProyeksi = 0.0;
+        $totalRealisasi = 0.0;
+        $realisasiUpb = 0.0;
+        $realisasiUpk = 0.0;
+        $deviasi = 0.0;
+        $deviasiUpb = 0.0;
+        $deviasiUpk = 0.0;
+
+        EkuTransaction::query()
+            ->whereIn('id', $approvedIds)
+            ->get()
+            ->each(function (EkuTransaction $trx) use (
+                &$totalProyeksi, &$totalRealisasi, &$realisasiUpb, &$realisasiUpk,
+                &$deviasi, &$deviasiUpb, &$deviasiUpk,
+            ) {
+                $laporan = EkuReportCalculator::hitung($trx);
+
+                $totalProyeksi += $laporan['penarikanTotal'];
+                $totalRealisasi += $laporan['realisasiPenarikan'];
+                $realisasiUpb += $laporan['realisasiPenarikanUpb'];
+                $realisasiUpk += $laporan['realisasiPenarikanUpk'];
+
+                $deviasi += $laporan['deviasiPenarikan'];
+                $deviasiUpb += $laporan['deviasiPenarikanUpb'];
+                $deviasiUpk += $laporan['deviasiPenarikanUpk'];
+            });
+
+        $sisa = max(0, $deviasi);
+
+        return [
+            'labels' => ['Realisasi', 'Sisa (Deviasi)'],
+            'values' => [$totalRealisasi, $sisa],
+            'colors' => ['#3b82f6', '#f59e0b'],
+            'totalLabelOverride' => $totalProyeksi,
+            'detail' => [
+                ['upb' => $realisasiUpb, 'upk' => $realisasiUpk],
+                ['upb' => $deviasiUpb, 'upk' => $deviasiUpk, 'total' => $deviasi],
+            ],
+        ];
     }
 
-    public function deviasiPieData(): array
+    public function setoranPieData(): array
     {
-        return $this->donutSvgData($this->deviasiChartData());
+        return $this->donutSvgData($this->setoranChartData());
+    }
+
+    public function penarikanPieData(): array
+    {
+        return $this->donutSvgData($this->penarikanChartData());
     }
 
     protected function donutSvgData(array $data): array
@@ -418,6 +440,11 @@ class Dashboard extends BaseDashboard implements HasForms
         $values = $data['values'];
         $colors = $data['colors'];
         $total = array_sum($values);
+
+        // Label di tengah donut bisa di-override (mis. "Total Proyeksi") supaya tetap akurat
+        // walau slice yang dirender tidak selalu = penjumlahan aslinya (contoh: kasus
+        // over-realisasi, di mana slice "Sisa" di-nolkan tapi Total Proyeksi tetap harus tampil apa adanya).
+        $totalUntukLabel = $data['totalLabelOverride'] ?? $total;
 
         $radius = 80;
         $strokeWidth = 30;
@@ -430,7 +457,7 @@ class Dashboard extends BaseDashboard implements HasForms
             'radius' => $radius,
             'strokeWidth' => $strokeWidth,
             'circumference' => round($circumference, 2),
-            'totalFmt' => $this->formatRupiahSingkat(0),
+            'totalFmt' => $this->formatRupiahSingkat($totalUntukLabel),
             'jumlahKategori' => 0,
         ];
 
@@ -445,20 +472,28 @@ class Dashboard extends BaseDashboard implements HasForms
         $detail = $data['detail'] ?? [];
 
         foreach ($values as $i => $value) {
-            if ($value <= 0) continue;
-
-            $persen = $value / $total * 100;
-            $panjangPenuh = $circumference * ($persen / 100);
-
             // Grafik Deviasi punya key 'total' di detail-nya (nilai bertanda: sisa/over),
             // sementara grafik Realisasi tidak -- dipakai untuk pilih format angka yang sesuai.
             $adalahDeviasi = isset($detail[$i]) && array_key_exists('total', $detail[$i]);
 
+            // Kasus over-realisasi: nilai slice "Sisa" jadi 0 (tidak bisa digambar sebagai
+            // busur), TAPI status "Over" ini justru info penting yang wajib tetap terlihat
+            // sebagai kartu keterangan (dengan badge "Over", bukan hilang begitu saja).
+            $statusOver = $adalahDeviasi && $detail[$i]['total'] < 0;
+
+            if ($value <= 0 && ! $statusOver) continue;
+
+            $persen = $total > 0 ? ($value / $total * 100) : 0;
+            $panjangPenuh = $circumference * ($persen / 100);
+
             $slices[] = [
-                'color' => $colors[$i] ?? '#94a3b8',
+                'color' => $statusOver ? '#ef4444' : ($colors[$i] ?? '#94a3b8'),
                 'label' => $labels[$i] ?? '',
-                'valueFmt' => $this->formatRupiahPenuh($value),
+                // Untuk status Over, tampilkan besaran over yang sebenarnya (bukan 0),
+                // supaya kartu keterangan tetap informatif walau lingkarannya tidak tergambar.
+                'valueFmt' => $statusOver ? Rupiah::format(abs($detail[$i]['total'])) : $this->formatRupiahPenuh($value),
                 'persen' => round($persen, 1),
+                'statusOver' => $statusOver,
                 'dashLen' => round(max(0, $panjangPenuh - $jarakPemisah), 2),
                 'dashOffset' => round(-1 * ($circumference * $persenKumulatif / 100), 2),
                 // Breakdown UPB/UPK -- hanya ditampilkan saat hover (lihat blade), tidak jadi slice sendiri.
@@ -484,7 +519,7 @@ class Dashboard extends BaseDashboard implements HasForms
             'radius' => $radius,
             'strokeWidth' => $strokeWidth,
             'circumference' => round($circumference, 2),
-            'totalFmt' => $this->formatRupiahSingkat($total),
+            'totalFmt' => $this->formatRupiahSingkat($totalUntukLabel),
             'jumlahKategori' => $jumlahKategori,
         ];
     }

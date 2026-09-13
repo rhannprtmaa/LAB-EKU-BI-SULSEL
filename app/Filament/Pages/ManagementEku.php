@@ -34,9 +34,11 @@ class ManagementEku extends Page implements HasForms, HasTable
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cog-6-tooth';
 
-    protected static ?string $navigationLabel = 'Management EKU';
+    protected static string|\UnitEnum|null $navigationGroup = 'Penataan';
 
-    protected static ?string $title = 'Management EKU';
+    protected static ?string $navigationLabel = 'Penataan EKU';
+
+    protected static ?string $title = 'Penataan EKU';
 
     public static function canAccess(): bool
     {
