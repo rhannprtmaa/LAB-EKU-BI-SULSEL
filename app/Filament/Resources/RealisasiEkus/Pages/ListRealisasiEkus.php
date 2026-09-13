@@ -109,8 +109,8 @@ class ListRealisasiEkus extends ListRecords
                             return is_numeric($cleaned) ? (float) $cleaned : 0;
                         };
 
-                        // KONTROL PENGALI (Otomatis x 1 Juta)
-                        $multiplier = 1000000;
+                        // Nominal Excel sekarang dibaca APA ADANYA (real value), bukan lagi satuan jutaan.
+                        $multiplier = 1;
 
                         // 1. PROSES SHEET SETORAN
                         foreach ($sheetSetoran as $index => $row) {

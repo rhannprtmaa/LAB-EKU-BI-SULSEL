@@ -117,7 +117,8 @@ class EkuTransaction extends Model
             if (empty($arrayData) || empty($arrayData[0])) return 0;
 
             $sheet = $arrayData[0];
-            $multiplier = 1000000;
+            // Nominal Excel sekarang dibaca APA ADANYA (real value), bukan lagi satuan jutaan.
+            $multiplier = 1;
 
             $clean = fn($val) => is_numeric($val)
                 ? (float) $val
@@ -544,7 +545,8 @@ class EkuTransaction extends Model
         }
 
         $fullPath = Storage::disk('public')->path($filePath);
-        $multiplier = 1000000;
+        // Nominal Excel sekarang dibaca APA ADANYA (real value), bukan lagi satuan jutaan.
+            $multiplier = 1;
 
         $kolomBulan = [
             3 => 'Januari', 4 => 'Februari', 5 => 'Maret', 6 => 'April',

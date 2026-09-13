@@ -45,7 +45,7 @@ class Dashboard extends BaseDashboard implements HasForms
         return $schema
             ->components([
                 Select::make('jenisGrafik')
-                    ->label('Jenis Grafik')
+                    ->label('Kategori')
                     ->live()
                     ->options([
                         'forecast_eku' => 'Forecast EKU',

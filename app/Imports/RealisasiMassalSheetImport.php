@@ -29,14 +29,13 @@ class RealisasiMassalSheetImport implements ToCollection, WithStartRow
     private const KOLOM_MULAI_NOMINAL = 2; // kolom C ke atas berisi UPB/UPK
 
     /**
-     * PENTING: konvensi seluruh sistem EKU (sama persis dengan
-     * EkuTransaction::reprocessExcelFiles() untuk forecast) -> angka di
-     * dalam cell Excel satuannya JUTA. Cell berisi "1" = Rp 1.000.000,
-     * cell berisi "1000" = Rp 1.000.000.000 (1 miliar).
-     * Sebelumnya multiplier ini KELEWATAN di import massal, jadi semua
-     * angka realisasi kesimpen 1 juta kali lebih kecil dari seharusnya.
+     * PENTING: konvensi seluruh sistem EKU -> angka di dalam cell Excel
+     * dibaca APA ADANYA sebagai nominal real (Rupiah), BUKAN lagi satuan
+     * juta. Cell berisi "1" = Rp1, cell berisi "1000" = Rp1.000.
+     * (Sebelumnya konvensinya satuan juta; sudah diubah sesuai kebutuhan
+     * terbaru -- lihat riwayat commit "ganti satuan input ke nominal real".)
      */
-    private const MULTIPLIER = 1_000_000;
+    private const MULTIPLIER = 1;
 
     protected array $bulanUrut = [
         1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
