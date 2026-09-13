@@ -54,11 +54,14 @@ class DetailsRelationManager extends RelationManager
         $kolom = [
             TextColumn::make('bulan')
                 ->label('Bulan')
-                ->summarize(
+                ->summarize([
                     \Filament\Tables\Columns\Summarizers\Summarizer::make()
-                        ->label('Grand Total')
-                        ->using(fn () => 'Grand Total')
-                ),
+                        ->label('')
+                        ->using(fn () => 'Total Setoran'),
+                    \Filament\Tables\Columns\Summarizers\Summarizer::make()
+                        ->label('')
+                        ->using(fn () => 'Total Penarikan'),
+                ]),
 
             TextColumn::make('jenis_file')
                 ->label('Jenis')
@@ -70,22 +73,38 @@ class DetailsRelationManager extends RelationManager
                 }),
         ];
 
+        // Setoran dan Penarikan adalah 2 hal yang berbeda -- jangan digabung jadi satu
+        // "grand total". Tiap kolom pecahan & subtotal punya 2 baris ringkasan terpisah.
         foreach ($kolomPecahan as $label => $namaKolom) {
             $kolom[] = ($bisaEdit
                 ? $this->buildEditableColumn($namaKolom, $label)
                 : TextColumn::make($namaKolom)->label($label)->numeric(0, ',', '.')
-            )->summarize(
-                Sum::make()->label('')->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.')
-            );
+            )->summarize([
+                Sum::make()
+                    ->label('')
+                    ->query(fn ($query) => $query->where('jenis_file', 'Setoran'))
+                    ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.'),
+                Sum::make()
+                    ->label('')
+                    ->query(fn ($query) => $query->where('jenis_file', 'Penarikan'))
+                    ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.'),
+            ]);
         }
 
         $kolom[] = TextColumn::make('subtotal')
             ->label('Subtotal')
             ->numeric(0, ',', '.')
             ->weight(FontWeight::Bold)
-            ->summarize(
-                Sum::make()->label('')->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.')
-            );
+            ->summarize([
+                Sum::make()
+                    ->label('')
+                    ->query(fn ($query) => $query->where('jenis_file', 'Setoran'))
+                    ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.'),
+                Sum::make()
+                    ->label('')
+                    ->query(fn ($query) => $query->where('jenis_file', 'Penarikan'))
+                    ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.'),
+            ]);
 
         return $table
             ->recordTitleAttribute('bulan')
@@ -115,25 +134,31 @@ class DetailsRelationManager extends RelationManager
     {
         $details = $this->getOwnerRecord()->details;
 
-        $totalSetoran = (float) $details->where('jenis_file', 'Setoran')->sum('subtotal');
-        $totalPenarikan = (float) $details->where('jenis_file', 'Penarikan')->sum('subtotal');
+        $setoranDetails = $details->where('jenis_file', 'Setoran');
+        $penarikanDetails = $details->where('jenis_file', 'Penarikan');
 
-        $totalUK = (float) $details->sum(fn ($d) => $d->kertas_100k + $d->kertas_50k + $d->kertas_20k
-            + $d->kertas_10k + $d->kertas_5k + $d->kertas_2k + $d->kertas_1k);
+        $hitungUK = fn ($d) => $d->kertas_100k + $d->kertas_50k + $d->kertas_20k
+            + $d->kertas_10k + $d->kertas_5k + $d->kertas_2k + $d->kertas_1k;
+        $hitungUL = fn ($d) => $d->logam_1k + $d->logam_500 + $d->logam_200 + $d->logam_100;
+        $hitungUPB = fn ($d) => $d->kertas_100k + $d->kertas_50k;
 
-        $totalUL = (float) $details->sum(fn ($d) => $d->logam_1k + $d->logam_500 + $d->logam_200 + $d->logam_100);
-
-        $totalUPB = (float) $details->sum(fn ($d) => $d->kertas_100k + $d->kertas_50k);
-        $totalUPK = (float) $details->sum('subtotal') - $totalUPB;
-
+        // Setoran dan Penarikan adalah 2 hal yang berbeda -- setiap breakdown
+        // (UK, UL, UPB, UPK) dihitung terpisah per jenis, tidak digabung.
         return [
-            'totalSetoran' => $totalSetoran,
-            'totalPenarikan' => $totalPenarikan,
-            'totalUK' => $totalUK,
-            'totalUL' => $totalUL,
-            'totalUPB' => $totalUPB,
-            'totalUPK' => $totalUPK,
-            'grandTotal' => $totalSetoran + $totalPenarikan,
+            'totalSetoran' => (float) $setoranDetails->sum('subtotal'),
+            'totalPenarikan' => (float) $penarikanDetails->sum('subtotal'),
+
+            'totalUKSetoran' => (float) $setoranDetails->sum($hitungUK),
+            'totalUKPenarikan' => (float) $penarikanDetails->sum($hitungUK),
+
+            'totalULSetoran' => (float) $setoranDetails->sum($hitungUL),
+            'totalULPenarikan' => (float) $penarikanDetails->sum($hitungUL),
+
+            'totalUPBSetoran' => (float) $setoranDetails->sum($hitungUPB),
+            'totalUPBPenarikan' => (float) $penarikanDetails->sum($hitungUPB),
+
+            'totalUPKSetoran' => (float) $setoranDetails->sum('subtotal') - (float) $setoranDetails->sum($hitungUPB),
+            'totalUPKPenarikan' => (float) $penarikanDetails->sum('subtotal') - (float) $penarikanDetails->sum($hitungUPB),
         ];
     }
 
