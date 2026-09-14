@@ -32,7 +32,7 @@ class ManagementEku extends Page implements HasForms, HasTable
 
     protected string $view = 'filament.pages.management-eku';
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cog-6-tooth';
+    protected static string|\BackedEnum|null $navigationIcon = null;
 
     protected static string|\UnitEnum|null $navigationGroup = 'Penataan';
 

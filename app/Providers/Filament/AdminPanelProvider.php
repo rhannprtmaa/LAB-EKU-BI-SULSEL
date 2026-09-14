@@ -9,15 +9,20 @@ use App\Filament\Pages\ManagementEku;
 use App\Filament\Pages\Profile;
 use App\Filament\Pages\ReportEku;
 use App\Filament\Resources\EkuTransactions\EkuTransactionResource;
+use App\Filament\Resources\KnowledgePosts\KnowledgePostResource;
 use App\Filament\Resources\RealisasiEkus\RealisasiEkuResource;
+use App\Filament\Resources\Users\UserResource;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationBuilder;
+use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -70,6 +75,62 @@ class AdminPanelProvider extends PanelProvider
                 ViewBatasanBank::class,
                 Profile::class,
             ])
+
+            /*
+             * --- Susunan Navigasi Sidebar ---
+             * Bawaan Filament selalu menaruh SEMUA item yang tidak
+             * dikelompokkan (ungrouped) di atas, baru grup berlabel di
+             * bawahnya -- jadi grup "Penataan" tidak bisa sekadar diberi
+             * $navigationSort kecil untuk pindah ke atas, karena hampir
+             * semua resource/page lain di project ini juga ungrouped.
+             *
+             * Makanya urutan sidebar disusun manual di sini: Dashboard
+             * dulu, lalu grup dropdown "Penataan" (Penataan EKU, Penataan
+             * User, Penataan Informasi) tepat di bawahnya, baru sisanya.
+             *
+             * CATATAN: Filament tidak mengizinkan grup dan item di
+             * dalamnya sama-sama punya icon. Karena grup ini diberi icon,
+             * ManagementEku, UserResource, dan KnowledgePostResource
+             * masing-masing di-set $navigationIcon = null LANGSUNG di
+             * class-nya (cara yang didukung resmi oleh Filament -- lihat
+             * https://filamentphp.com/docs/navigation/overview) supaya
+             * ketiganya tampil rapi berbaris di bawah grup tanpa icon.
+             *
+             * CATATAN LAIN: BankResource dan EkuDeadlineResource SENGAJA
+             * tidak dimasukkan ke closure ini sama sekali. Keduanya sudah
+             * diberi $shouldRegisterNavigation = false di class masing-
+             * masing karena "Daftar Bank" dan "Batas Waktu Pengajuan EKU"
+             * memang dirancang hanya bisa diakses sebagai FITUR di dalam
+             * halaman "Penataan EKU" (ManagementEku), bukan sebagai item
+             * sidebar tersendiri. Memanggil ::getNavigationItems() secara
+             * manual di sini akan MELEWATI pengecekan
+             * shouldRegisterNavigation() Filament -- jadi kalau kedua
+             * resource ini ditambahkan lagi ke closure ini, mereka akan
+             * muncul lagi di sidebar meski flagnya sudah false.
+             */
+            ->navigation(function (NavigationBuilder $builder): NavigationBuilder {
+                return $builder->groups([
+                    NavigationGroup::make()
+                        ->items(Dashboard::getNavigationItems()),
+
+                    NavigationGroup::make('Penataan')
+                        ->icon(Heroicon::OutlinedCog6Tooth)
+                        ->items([
+                            ...ManagementEku::getNavigationItems(),
+                            ...UserResource::getNavigationItems(),
+                            ...KnowledgePostResource::getNavigationItems(),
+                        ]),
+
+                    NavigationGroup::make()
+                        ->items([
+                            ...EkuTransactionResource::getNavigationItems(),
+                            ...RealisasiEkuResource::getNavigationItems(),
+                            ...KnowledgeCenter::getNavigationItems(),
+                            ...ReportEku::getNavigationItems(),
+                            ...Profile::getNavigationItems(),
+                        ]),
+                ]);
+            })
 
             // --- Menu Akun (baris nama akun di dropdown user menu diarahkan ke Profil) ---
             ->userMenuItems([

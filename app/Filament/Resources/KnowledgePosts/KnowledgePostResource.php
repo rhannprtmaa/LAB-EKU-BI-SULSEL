@@ -29,7 +29,7 @@ class KnowledgePostResource extends Resource
 {
     protected static ?string $model = KnowledgePost::class;
 
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-academic-cap';
+    protected static string|BackedEnum|null $navigationIcon = null;
     protected static string|UnitEnum|null $navigationGroup = 'Penataan';
     protected static ?string $navigationLabel = 'Penataan Informasi';
     protected static ?string $modelLabel = 'Materi Informasi';

@@ -10,7 +10,6 @@ use BackedEnum;
 use UnitEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 
@@ -18,7 +17,7 @@ class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
+    protected static string|BackedEnum|null $navigationIcon = null;
     protected static string|UnitEnum|null $navigationGroup = 'Penataan';
     protected static ?string $navigationLabel = 'Penataan User';
     protected static ?string $pluralModelLabel = 'Daftar Pengguna';
